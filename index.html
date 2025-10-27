@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stats.csv — Быстрый просмотр</title>
+  <style>
+    :root {
+      --bg: #0b0d10;
+      --card: #13161b;
+      --muted: #7e8a9a;
+      --text: #e9eef5;
+      --accent: #3aa0ff;
+      --border: #242a33;
+      --header: #0f1216;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+      background: var(--bg); color: var(--text);
+    }
+    .wrap { max-width: 1400px; margin: 0 auto; padding: 20px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+    .toolbar { display:flex; gap:12px; align-items:center; padding:14px 16px; background: linear-gradient(180deg, var(--header), transparent); border-bottom: 1px solid var(--border); position: sticky; top:0; z-index:2; }
+    .toolbar h1 { font-size: 16px; margin: 0 8px 0 0; color: #cfe3ff; letter-spacing:.2px }
+    .search { flex: 1; position: relative; }
+    .search input { width: 100%; padding: 10px 36px 10px 36px; border-radius: 10px; border: 1px solid var(--border); background:#0e1218; color: var(--text); outline: none; }
+    .search svg { position:absolute; left:10px; top:50%; transform:translateY(-50%); opacity:.7 }
+    .meta { color: var(--muted); font-size: 12px; }
+
+    table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    thead th { position: sticky; top: 58px; z-index:1; background: #0f1216; color:#c7d2e3; font-weight:600; text-align:left; padding:10px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    thead th.sortable { cursor: pointer; }
+    thead th .sort { opacity:.6; margin-left:6px; font-size:11px; }
+    tbody tr:nth-child(odd) { background: rgba(255,255,255,0.02); }
+    tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+
+    .table-wrap { max-height: calc(100vh - 160px); overflow: auto; }
+
+    .pill { display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border:1px solid var(--border); border-radius: 999px; background:#0f141b; }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; background:#0d1117; border:1px solid #202632; padding:2px 6px; border-radius:6px; }
+
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .bool { text-align: center; font-weight: 700; }
+    .muted { color: var(--muted); }
+
+    /* dynamic cell coloring (set inline background via style, keep text legible) */
+    .heat { background-image: linear-gradient(90deg, rgba(0,0,0,0), rgba(0,0,0,0)); transition: background-color .1s ease; }
+
+    /* narrow columns */
+    .w-80 { width: 80px; }
+    .w-100 { width: 100px; }
+    .w-120 { width: 120px; }
+    .w-140 { width: 140px; }
+
+    .footer { padding:12px 16px; color: var(--muted); font-size: 12px; display:flex; justify-content:space-between; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="toolbar">
+        <h1>Stats.csv</h1>
+        <div class="pill meta" id="status">Загрузка…</div>
+        <div class="search">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/></svg>
+          <input id="q" placeholder="Фильтр по всем столбцам (на лету) — попробуйте: tank, usa, 58.6%…" autocomplete="off" />
+        </div>
+        <div class="meta" id="counts"></div>
+      </div>
+      <div class="table-wrap">
+        <table id="tbl">
+          <thead><tr id="thead-row"></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="footer">
+        <div>Клик по заголовку — сортировка. Повторный клик меняет направление.</div>
+        <div class="muted">Файл: <code>stats.csv</code> (лежит рядом со страницей)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PapaParse for robust CSV parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script>
+  // ===== Schema (только эти столбцы, остальные игнорируем) =====
+  const SCHEMA = [
+    { key: 'name',                label: 'name',               type: 'text' },
+    { key: 'total games',         label: 'total games',        type: 'int',  cls:'w-100' },
+    { key: 'win rate',            label: 'win rate',           type: 'pct2', heat:true, cls:'w-120' },
+    { key: 'spawn / g',           label: 'spawn / g',          type: 'float2', heat:true, cls:'w-100' },
+    { key: 'lvling',              label: 'lvling',             type: 'float2', heat:true, cls:'w-100' },
+    { key: 'farm',                label: 'farm',               type: 'float2', heat:true, cls:'w-100' },
+    { key: 'ground / game',       label: 'ground / game',      type: 'float2', heat:true, cls:'w-120' },
+    { key: 'air / game',          label: 'air / game',         type: 'float2', heat:true, cls:'w-120' },
+    { key: 'naval / game',        label: 'naval / game',       type: 'float2', heat:true, cls:'w-120' },
+    { key: 'ground / spawn',      label: 'ground / spawn',     type: 'float2', heat:true, cls:'w-120' },
+    { key: 'air / spawn',         label: 'air / spawn',        type: 'float2', heat:true, cls:'w-120' },
+    { key: 'naval / spawn',       label: 'naval / spawn',      type: 'float2', heat:true, cls:'w-120' },
+    { key: 'ground / death',      label: 'ground / death',     type: 'float2', heat:true, cls:'w-120' },
+    { key: 'air / death',         label: 'air / death',        type: 'float2', heat:true, cls:'w-120' },
+    { key: 'naval / death',       label: 'naval / death',      type: 'float2', heat:true, cls:'w-120' },
+    { key: 'mode',                label: 'mode',               type: 'text' },
+    { key: 'Class',               label: 'Class',              type: 'text' },
+    { key: 'Move Type',           label: 'Move Type',          type: 'text' },
+    { key: 'rank',                label: 'rank',               type: 'int',  cls:'w-80' },
+    { key: 'BR / a',              label: 'BR / a',             type: 'float2', heat:true, cls:'w-100' },
+    { key: 'BR / r',              label: 'BR / r',             type: 'float2', heat:true, cls:'w-100' },
+    { key: 'BR / s',              label: 'BR / s',             type: 'float2', heat:true, cls:'w-100' },
+    { key: 'BRTank / r',          label: 'BRTank / r',         type: 'float2', heat:true, cls:'w-120' },
+    { key: 'BRTank / s',          label: 'BRTank / s',         type: 'float2', heat:true, cls:'w-120' },
+    { key: 'country',             label: 'country',            type: 'text', cls:'w-120' },
+    { key: 'Prem',                label: 'Prem',               type: 'bool', cls:'w-80' },
+    { key: 'Event',               label: 'Event',              type: 'bool', cls:'w-80' },
+    { key: 'Gift',                label: 'Gift',               type: 'bool', cls:'w-80' },
+    { key: 'Normal',              label: 'Normal',             type: 'bool', cls:'w-80' },
+  ];
+
+  // Build a map for quick lookup
+  const SCHEMA_MAP = new Map(SCHEMA.map(col => [col.key, col]));
+  const DISPLAY_COLUMNS = SCHEMA.map(c => c.key);
+  const NUMERIC_TYPES = new Set(['int','float2','pct2']);
+
+  const state = {
+    raw: [],        // parsed & coerced rows
+    filtered: [],   // filtered rows
+    sort: { key: null, dir: 1 }, // 1 asc, -1 desc
+    filterText: ''
+  };
+
+  const el = sel => document.querySelector(sel);
+  const $theadRow = el('#thead-row');
+  const $tbody = el('#tbody');
+  const $counts = el('#counts');
+  const $status = el('#status');
+  const $q = el('#q');
+
+  // Fetch and parse CSV
+  init();
+  async function init(){
+    try {
+      const res = await fetch('stats.csv', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Не удалось загрузить stats.csv');
+      const text = await res.text();
+      const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+      const rows = (parsed.data || []).map(coerceRow);
+      // Keep only whitelisted keys and keep order
+      state.raw = rows.map(r => filterKeys(r));
+      buildHeader();
+      applyFilterAndRender();
+      $status.textContent = 'Готово';
+    } catch (e) {
+      console.error(e);
+      $status.textContent = 'Ошибка загрузки CSV';
+    }
+  }
+
+  function filterKeys(row){
+    const out = {};
+    for (const key of DISPLAY_COLUMNS) {
+      if (key in row) out[key] = row[key];
+    }
+    return out;
+  }
+
+  function coerceRow(row){
+    const out = {};
+    for (const [key, val] of Object.entries(row)){
+      if (!SCHEMA_MAP.has(key)) continue; // ignore unknown columns
+      const t = SCHEMA_MAP.get(key).type;
+      out[key] = coerce(val, t);
+    }
+    return out;
+  }
+
+  function coerce(v, t){
+    const s = String(v ?? '').trim();
+    if (t === 'text') return s;
+    if (t === 'bool') {
+      // accept true/false, 1/0, yes/no, y/n
+      const k = s.toLowerCase();
+      return ['true','1','yes','y','да','истина','✓'].includes(k);
+    }
+    if (t === 'int') {
+      const n = Number(s.replace(/\s+/g,''));
+      return Number.isFinite(n) ? n : null;
+    }
+    if (t === 'float2' || t === 'pct2') {
+      if (s === '') return null;
+      let num = s.endsWith('%') ? parseFloat(s) / 100 : Number(s);
+      return Number.isFinite(num) ? num : null;
+    }
+    return s;
+  }
+
+  // Header with sorting
+  function buildHeader(){
+    $theadRow.innerHTML = '';
+    DISPLAY_COLUMNS.forEach(key => {
+      const col = SCHEMA_MAP.get(key);
+      const th = document.createElement('th');
+      th.textContent = col.label;
+      th.className = (col.cls || '') + ' ' + 'sortable';
+      th.dataset.key = key;
+      const sortSpan = document.createElement('span');
+      sortSpan.className = 'sort';
+      sortSpan.textContent = '';
+      th.appendChild(sortSpan);
+      th.addEventListener('click', () => onSort(key));
+      $theadRow.appendChild(th);
+    });
+
+    // Global live filter
+    let raf;
+    $q.addEventListener('input', () => {
+      state.filterText = $q.value.toLowerCase();
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(applyFilterAndRender);
+    });
+  }
+
+  function onSort(key){
+    const prev = state.sort.key;
+    if (prev === key) state.sort.dir *= -1; else state.sort = { key, dir: 1 };
+    applyFilterAndRender();
+  }
+
+  function applyFilterAndRender(){
+    // filter
+    const q = state.filterText;
+    state.filtered = !q ? state.raw.slice() : state.raw.filter(row =>
+      DISPLAY_COLUMNS.some(k => String(formatForSearch(row[k])).toLowerCase().includes(q))
+    );
+
+    // sort
+    const { key, dir } = state.sort;
+    if (key) {
+      const t = SCHEMA_MAP.get(key).type;
+      state.filtered.sort((a,b) => cmp(a[key], b[key], t) * dir);
+    }
+
+    render();
+  }
+
+  function formatForSearch(v){
+    if (typeof v === 'number') return v;
+    if (typeof v === 'boolean') return v ? 'true' : 'false';
+    return v ?? '';
+  }
+
+  function cmp(a,b,t){
+    if (a == null && b == null) return 0;
+    if (a == null) return 1;
+    if (b == null) return -1;
+    if (NUMERIC_TYPES.has(t)) return a - b;
+    return String(a).localeCompare(String(b), 'ru', { sensitivity: 'base' });
+  }
+
+  function render(){
+    // update header sort markers
+    [...$theadRow.children].forEach(th => {
+      const key = th.dataset.key;
+      const span = th.querySelector('.sort');
+      if (state.sort.key === key) span.textContent = state.sort.dir === 1 ? '▲' : '▼'; else span.textContent = '';
+    });
+
+    // counts
+    $counts.textContent = `${state.filtered.length} строк` + (state.filtered.length !== state.raw.length ? ` из ${state.raw.length}` : '');
+
+    // compute heat min/max for visible rows per numeric column
+    const mm = new Map();
+    for (const key of DISPLAY_COLUMNS){
+      const col = SCHEMA_MAP.get(key);
+      if (!NUMERIC_TYPES.has(col.type)) continue;
+      let min = Infinity, max = -Infinity;
+      for (const r of state.filtered){
+        const v = r[key];
+        if (v == null) continue;
+        if (v < min) min = v; if (v > max) max = v;
+      }
+      if (min === Infinity) min = max = null;
+      mm.set(key, {min, max});
+    }
+
+    // paint
+    const frag = document.createDocumentFragment();
+    $tbody.innerHTML = '';
+    for (const row of state.filtered){
+      const tr = document.createElement('tr');
+      for (const key of DISPLAY_COLUMNS){
+        const col = SCHEMA_MAP.get(key);
+        const td = document.createElement('td');
+        if (col.type === 'bool') td.classList.add('bool');
+        if (NUMERIC_TYPES.has(col.type)) td.classList.add('num','heat');
+        if (col.cls) td.classList.add(...col.cls.split(' '));
+        const val = row[key];
+        td.textContent = formatCell(val, col.type);
+
+        // heat coloring within current filter range
+        if (NUMERIC_TYPES.has(col.type)){
+          const {min, max} = mm.get(key);
+          if (min != null && max != null && max > min){
+            const norm = (val == null) ? 0 : (val - min) / (max - min);
+            // green (high) -> red (low)
+            const hue = 120 * norm; // 0..120
+            // use alpha over background for subtlety
+            td.style.background = `linear-gradient(90deg, rgba(0,0,0,0), hsla(${hue}, 80%, 30%, 0.35))`;
+          } else {
+            td.style.background = 'transparent';
+          }
+        }
+
+        frag.appendChild(tr).appendChild(td);
+      }
+      frag.appendChild(tr);
+    }
+    $tbody.appendChild(frag);
+  }
+
+  function formatCell(v, t){
+    if (v == null || v === '') return '—';
+    if (t === 'int') return String(v);
+    if (t === 'float2') return v.toFixed(2);
+    if (t === 'pct2') return (v * 100).toFixed(2) + '%';
+    if (t === 'bool') return v ? '✓' : '';
+    return String(v);
+  }
+  </script>
+</body>
+</html>
