@@ -3,29 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Stats.csv — Просмотр (фильтры по столбцам + сортировка)</title>
+  <title>Stats.csv — Быстрый просмотр (ускорено, мульти‑фильтры, сплошная заливка)</title>
   <style>
     :root {
       --bg: #0b0d10;
       --muted: #7e8a9a;
       --text: #e9eef5;
-      --accent: #3aa0ff;
       --border: #242a33;
       --toolbar-h: 56px;
       --th-h: 40px;
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; }
-    body {
-      margin: 0; font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-      background: var(--bg); color: var(--text);
-    }
+    body { margin: 0; font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", sans-serif; background: var(--bg); color: var(--text); }
 
-    /* Верхняя панель */
+    /* Шапка */
     .toolbar { display:flex; gap:12px; align-items:center; padding:10px 14px; height: var(--toolbar-h); }
-    .toolbar h1 { font-size: 16px; margin: 0 6px 0 0; color: #cfe3ff; letter-spacing:.2px }
+    .toolbar h1 { font-size: 16px; margin: 0 6px 0 0; color: #cfe3ff; }
     .search { flex: 1; position: relative; }
-    .search input { width: 100%; padding: 10px 36px 10px 36px; border-radius: 10px; border: 1px solid var(--border); background:#0e1218; color: var(--text); outline: none; }
+    .search input { width: 100%; padding: 10px 36px; border-radius: 10px; border: 1px solid var(--border); background:#0e1218; color: var(--text); outline: none; }
     .search svg { position:absolute; left:10px; top:50%; transform:translateY(-50%); opacity:.7 }
     .meta { color: var(--muted); font-size: 12px; }
     .btn { border:1px solid var(--border); background:#0e1218; color:var(--text); padding:8px 10px; border-radius:10px; cursor:pointer; }
@@ -34,34 +30,35 @@
     .table-wrap { height: calc(100vh - var(--toolbar-h)); overflow: auto; }
     table { width: 100%; border-collapse: separate; border-spacing: 0; }
 
-    thead th, thead td { background:#0f1216; color:#c7d2e3; font-weight:600; text-align:left; padding:8px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-    thead tr:nth-child(1) th { position: sticky; top: 0; z-index: 2; height: var(--th-h); }
-    thead tr:nth-child(2) th { position: sticky; top: var(--th-h); z-index: 1; background:#0d1015; }
-
+    thead th { background:#0f1216; color:#c7d2e3; font-weight:600; text-align:left; padding:8px; border-bottom:1px solid var(--border); white-space:nowrap; }
+    thead tr:nth-child(1) th { position: sticky; top: 0; z-index: 3; height: var(--th-h); }
+    thead tr:nth-child(2) th { position: sticky; top: var(--th-h); z-index: 2; background:#0d1015; }
     thead th.sortable { cursor: pointer; }
     thead th .sort { opacity:.6; margin-left:6px; font-size:11px; }
 
     tbody tr:nth-child(odd) { background: rgba(255,255,255,0.02); }
-    tbody td { padding: 8px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tbody td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
 
     .num { text-align: right; font-variant-numeric: tabular-nums; }
     .bool { text-align: center; font-weight: 700; }
 
     /* Ячейки фильтров */
-    .filter-cell { padding: 6px 6px; }
-    .filter-input, .filter-min, .filter-max, .filter-select { width: 100%; padding:6px 8px; border-radius:8px; border:1px solid var(--border); background:#0e1218; color:var(--text); outline:none; }
+    .filter-cell { padding: 6px; }
+    .filter-input, .filter-min, .filter-max { width: 100%; padding:6px 8px; border-radius:8px; border:1px solid var(--border); background:#0e1218; color:var(--text); outline:none; }
     .range { display:flex; gap:6px; }
-    .range .filter-min, .range .filter-max { width: 100%; }
-    .range .suffix { color: var(--muted); font-size: 12px; align-self:center; }
 
-    /* heat coloring */
-    .heat { background-image: linear-gradient(90deg, rgba(0,0,0,0), rgba(0,0,0,0)); transition: background-color .1s ease; }
+    /* Мульти‑селект чекбоксы (через <details>) */
+    .multi { position: relative; }
+    .multi details { width: 100%; }
+    .multi summary { list-style:none; cursor:pointer; padding:6px 8px; border:1px solid var(--border); border-radius:8px; background:#0e1218; }
+    .multi summary::marker { display:none; }
+    .multi .panel { position:absolute; top:38px; left:0; min-width: 220px; max-width: 360px; max-height: 260px; overflow:auto; background:#0f1216; border:1px solid var(--border); border-radius:10px; padding:8px; z-index:10; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+    .multi .panel label { display:flex; align-items:center; gap:8px; padding:4px 6px; }
+    .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+    .chip { font-size:12px; border:1px solid var(--border); padding:2px 6px; border-radius:999px; background:#11161d; }
 
-    /* Ширины */
-    .w-80 { width: 80px; }
-    .w-100 { width: 100px; }
-    .w-120 { width: 120px; }
-    .w-140 { width: 140px; }
+    /* Сплошная теплокарта (inline background-color) */
+    .heat { transition: background-color .06s ease; }
   </style>
 </head>
 <body>
@@ -69,7 +66,7 @@
     <h1>Stats.csv</h1>
     <div class="search">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/></svg>
-      <input id="q" placeholder="Глобальный фильтр по всем столбцам (на лету)" autocomplete="off" />
+      <input id="q" placeholder="Глобальный поиск по всем столбцам (на лету)" autocomplete="off" />
     </div>
     <button class="btn" id="reset">Сбросить фильтры</button>
     <div class="meta" id="counts"></div>
@@ -87,51 +84,53 @@
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script>
-  // ===== Schema (только эти столбцы, остальные игнорируем) =====
+  // ===== Schema =====
   const SCHEMA = [
     { key: 'name',                label: 'name',               type: 'text' },
-    { key: 'total games',         label: 'total games',        type: 'int',  cls:'w-100' },
-    { key: 'win rate',            label: 'win rate',           type: 'pct2', heat:true, cls:'w-120' },
-    { key: 'spawn / g',           label: 'spawn / g',          type: 'float2', heat:true, cls:'w-100' },
-    { key: 'lvling',              label: 'lvling',             type: 'float2', heat:true, cls:'w-100' },
-    { key: 'farm',                label: 'farm',               type: 'float2', heat:true, cls:'w-100' },
-    { key: 'ground / game',       label: 'ground / game',      type: 'float2', heat:true, cls:'w-120' },
-    { key: 'air / game',          label: 'air / game',         type: 'float2', heat:true, cls:'w-120' },
-    { key: 'naval / game',        label: 'naval / game',       type: 'float2', heat:true, cls:'w-120' },
-    { key: 'ground / spawn',      label: 'ground / spawn',     type: 'float2', heat:true, cls:'w-120' },
-    { key: 'air / spawn',         label: 'air / spawn',        type: 'float2', heat:true, cls:'w-120' },
-    { key: 'naval / spawn',       label: 'naval / spawn',      type: 'float2', heat:true, cls:'w-120' },
-    { key: 'ground / death',      label: 'ground / death',     type: 'float2', heat:true, cls:'w-120' },
-    { key: 'air / death',         label: 'air / death',        type: 'float2', heat:true, cls:'w-120' },
-    { key: 'naval / death',       label: 'naval / death',      type: 'float2', heat:true, cls:'w-120' },
+    { key: 'total games',         label: 'total games',        type: 'int' },
+    { key: 'win rate',            label: 'win rate',           type: 'pct2', heat:true },
+    { key: 'spawn / g',           label: 'spawn / g',          type: 'float2', heat:true },
+    { key: 'lvling',              label: 'lvling',             type: 'float2', heat:true },
+    { key: 'farm',                label: 'farm',               type: 'float2', heat:true },
+    { key: 'ground / game',       label: 'ground / game',      type: 'float2', heat:true },
+    { key: 'air / game',          label: 'air / game',         type: 'float2', heat:true },
+    { key: 'naval / game',        label: 'naval / game',       type: 'float2', heat:true },
+    { key: 'ground / spawn',      label: 'ground / spawn',     type: 'float2', heat:true },
+    { key: 'air / spawn',         label: 'air / spawn',        type: 'float2', heat:true },
+    { key: 'naval / spawn',       label: 'naval / spawn',      type: 'float2', heat:true },
+    { key: 'ground / death',      label: 'ground / death',     type: 'float2', heat:true },
+    { key: 'air / death',         label: 'air / death',        type: 'float2', heat:true },
+    { key: 'naval / death',       label: 'naval / death',      type: 'float2', heat:true },
     { key: 'mode',                label: 'mode',               type: 'text' },
     { key: 'Class',               label: 'Class',              type: 'text' },
     { key: 'Move Type',           label: 'Move Type',          type: 'text' },
-    { key: 'rank',                label: 'rank',               type: 'int',  cls:'w-80' },
-    { key: 'BR / a',              label: 'BR / a',             type: 'float2', heat:true, cls:'w-100' },
-    { key: 'BR / r',              label: 'BR / r',             type: 'float2', heat:true, cls:'w-100' },
-    { key: 'BR / s',              label: 'BR / s',             type: 'float2', heat:true, cls:'w-100' },
-    { key: 'BRTank / r',          label: 'BRTank / r',         type: 'float2', heat:true, cls:'w-120' },
-    { key: 'BRTank / s',          label: 'BRTank / s',         type: 'float2', heat:true, cls:'w-120' },
-    { key: 'country',             label: 'country',            type: 'text', cls:'w-120' },
-    { key: 'Prem',                label: 'Prem',               type: 'bool', cls:'w-80' },
-    { key: 'Event',               label: 'Event',              type: 'bool', cls:'w-80' },
-    { key: 'Gift',                label: 'Gift',               type: 'bool', cls:'w-80' },
-    { key: 'Normal',              label: 'Normal',             type: 'bool', cls:'w-80' },
+    { key: 'rank',                label: 'rank',               type: 'int' },
+    { key: 'BR / a',              label: 'BR / a',             type: 'float2', heat:true },
+    { key: 'BR / r',              label: 'BR / r',             type: 'float2', heat:true },
+    { key: 'BR / s',              label: 'BR / s',             type: 'float2', heat:true },
+    { key: 'BRTank / r',          label: 'BRTank / r',         type: 'float2', heat:true },
+    { key: 'BRTank / s',          label: 'BRTank / s',         type: 'float2', heat:true },
+    { key: 'country',             label: 'country',            type: 'text' },
+    { key: 'Prem',                label: 'Prem',               type: 'bool' },
+    { key: 'Event',               label: 'Event',              type: 'bool' },
+    { key: 'Gift',                label: 'Gift',               type: 'bool' },
+    { key: 'Normal',              label: 'Normal',             type: 'bool' },
   ];
-
   const SCHEMA_MAP = new Map(SCHEMA.map(c => [c.key, c]));
   const DISPLAY_COLUMNS = SCHEMA.map(c => c.key);
   const NUMERIC_TYPES = new Set(['int','float2','pct2']);
 
+  // ===== State =====
   const state = {
-    raw: [],
+    raw: [],           // нормализованные строки
     filtered: [],
     sort: { key: null, dir: 1 },
     filterText: '',
-    colFilters: {}
+    colFilters: {},    // per-column filters
+    uniques: new Map(),// uniques per column (for multi-selects)
   };
 
+  // ===== Elements =====
   const el = s => document.querySelector(s);
   const $theadRow = el('#thead-row');
   const $filterRow = el('#filter-row');
@@ -140,122 +139,107 @@
   const $q = el('#q');
   const $reset = el('#reset');
 
-  // Fetch and parse CSV
+  // ===== Init =====
   init();
   async function init(){
-    try {
-      const res = await fetch('stats.csv', { cache: 'no-store' });
-      if (!res.ok) throw new Error('Не удалось загрузить stats.csv');
-      const text = await res.text();
-      const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
-      const rows = (parsed.data || []).map(coerceRow);
-      // keep only whitelisted keys
-      state.raw = rows.map(r => filterKeys(r));
-      buildHeader();
-      buildFilters();
-      applyFilterAndRender();
-    } catch (e) {
-      console.error(e);
-      $counts.textContent = 'Ошибка загрузки CSV';
+    const res = await fetch('stats.csv', { cache: 'no-store' });
+    if (!res.ok) { $counts.textContent = 'Ошибка загрузки CSV'; return; }
+    const text = await res.text();
+    const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+    const rows = (parsed.data || []).map(coerceRow).map(r => filterKeys(r));
+
+    // Precompute search index (ускоряет глобальный фильтр)
+    state.raw = rows.map(r => ({ ...r, __search: buildSearchString(r) }));
+
+    // Collect uniques (ограничим до 1k значений на столбец)
+    for (const key of DISPLAY_COLUMNS){
+      const set = new Set();
+      for (const r of state.raw){
+        const v = r[key];
+        if (v === '' || v == null) continue;
+        const val = v;
+        set.add(val);
+        if (set.size > 1000) break;
+      }
+      state.uniques.set(key, Array.from(set).sort((a,b)=>{
+        const t = SCHEMA_MAP.get(key).type;
+        return NUMERIC_TYPES.has(t) ? (a-b) : String(a).localeCompare(String(b),'ru');
+      }));
     }
+
+    buildHeader();
+    buildFilters();
+    applyFilterAndRender();
   }
 
-  function filterKeys(row){
-    const out = {};
-    for (const key of DISPLAY_COLUMNS) if (key in row) out[key] = row[key];
-    return out;
-  }
-
-  function coerceRow(row){
-    const out = {};
-    for (const [key, val] of Object.entries(row)){
-      if (!SCHEMA_MAP.has(key)) continue;
-      const t = SCHEMA_MAP.get(key).type;
-      out[key] = coerce(val, t);
-    }
-    return out;
-  }
-
-  function coerce(v, t){
+  // ===== Helpers =====
+  function filterKeys(row){ const out = {}; for (const k of DISPLAY_COLUMNS) if (k in row) out[k] = row[k]; return out; }
+  function coerceRow(row){ const out = {}; for (const [k,v] of Object.entries(row)){ if (!SCHEMA_MAP.has(k)) continue; out[k] = coerce(v, SCHEMA_MAP.get(k).type); } return out; }
+  function coerce(v,t){
     const s = String(v ?? '').trim();
-    if (t === 'text') return s;
-    if (t === 'bool') {
-      const k = s.toLowerCase();
-      return ['true','1','yes','y','да','истина','✓'].includes(k);
-    }
-    if (t === 'int') {
-      const n = Number(s.replace(/\s+/g,''));
-      return Number.isFinite(n) ? n : null;
-    }
-    if (t === 'float2' || t === 'pct2') {
-      if (s === '') return null;
-      let num = s.endsWith('%') ? parseFloat(s) / 100 : Number(s);
-      return Number.isFinite(num) ? num : null;
-    }
+    if (t==='text') return s;
+    if (t==='bool') { const k=s.toLowerCase(); return ['true','1','yes','y','да','истина','✓'].includes(k); }
+    if (t==='int')  { const n=Number(s.replace(/\s+/g,'')); return Number.isFinite(n)?n:null; }
+    if (t==='float2' || t==='pct2') { if(!s) return null; const num = s.endsWith('%')? parseFloat(s)/100 : Number(s.replace(',','.')); return Number.isFinite(num)?num:null; }
     return s;
   }
+  function buildSearchString(r){ return DISPLAY_COLUMNS.map(k=>{ const v=r[k]; if (typeof v==='number') return v; if (typeof v==='boolean') return v?'true':'false'; return v??''; }).join(' | ').toLowerCase(); }
 
+  // ===== UI build =====
   function buildHeader(){
     $theadRow.innerHTML = '';
     DISPLAY_COLUMNS.forEach(key => {
       const col = SCHEMA_MAP.get(key);
       const th = document.createElement('th');
       th.textContent = col.label;
-      th.className = (col.cls || '') + ' ' + 'sortable';
+      th.className = 'sortable';
       th.dataset.key = key;
-      const sortSpan = document.createElement('span');
-      sortSpan.className = 'sort';
-      sortSpan.textContent = '';
-      th.appendChild(sortSpan);
+      const sortSpan = document.createElement('span'); sortSpan.className='sort'; sortSpan.textContent=''; th.appendChild(sortSpan);
       th.addEventListener('click', () => onSort(key));
       $theadRow.appendChild(th);
     });
 
-    let raf;
-    $q.addEventListener('input', () => {
-      state.filterText = $q.value.toLowerCase();
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(applyFilterAndRender);
-    });
+    // Глобальный фильтр (debounce)
+    let t; $q.addEventListener('input', () => { clearTimeout(t); t=setTimeout(()=>{ state.filterText=$q.value.toLowerCase(); applyFilterAndRender(); }, 120); });
 
-    $reset.addEventListener('click', () => resetFilters());
+    $reset.addEventListener('click', resetFilters);
   }
 
   function buildFilters(){
     $filterRow.innerHTML = '';
     for (const key of DISPLAY_COLUMNS){
       const col = SCHEMA_MAP.get(key);
-      const th = document.createElement('th');
-      th.className = 'filter-cell ' + (col.cls || '');
+      const th = document.createElement('th'); th.className='filter-cell';
 
-      if (col.type === 'bool'){
-        const sel = document.createElement('select');
-        sel.className = 'filter-select';
-        sel.innerHTML = '<option value="">все</option><option value="1">✓</option><option value="0">—</option>';
-        sel.addEventListener('change', () => { setColFilter(key, { kind:'bool', value: sel.value }); });
-        th.appendChild(sel);
-      } else if (NUMERIC_TYPES.has(col.type)){
-        const wrap = document.createElement('div');
-        wrap.className = 'range';
-        const min = document.createElement('input');
-        const max = document.createElement('input');
-        min.type = 'text'; max.type = 'text';
-        min.placeholder = col.type === 'pct2' ? 'мин %' : 'мин';
-        max.placeholder = col.type === 'pct2' ? 'макс %' : 'макс';
-        min.className = 'filter-min';
-        max.className = 'filter-max';
-        const handler = () => {
-          setColFilter(key, { kind:'range', min: parseMaybeNumber(min.value, col.type), max: parseMaybeNumber(max.value, col.type) });
-        };
-        min.addEventListener('input', handler);
-        max.addEventListener('input', handler);
-        wrap.appendChild(min); wrap.appendChild(max);
+      if (col.type==='bool' || col.type==='text' || (col.type==='int' && state.uniques.get(key).length<=50)){
+        // мультивыбор значений (для bool/text, а также для небольших наборов int)
+        const wrap = document.createElement('div'); wrap.className='multi';
+        wrap.innerHTML = `<details><summary>выбрать…</summary><div class="panel"></div></details><div class="chips" data-key="${key}"></div>`;
+        const panel = wrap.querySelector('.panel');
+        const chips = wrap.querySelector('.chips');
+        const values = state.uniques.get(key);
+        values.forEach(v=>{
+          const id = `f_${key}_${String(v).replace(/[^\w]+/g,'_')}`;
+          const label = document.createElement('label');
+          label.innerHTML = `<input type="checkbox" id="${id}"> <span>${formatCell(v,col.type)}</span>`;
+          const cb = label.querySelector('input');
+          cb.addEventListener('change', ()=>{ toggleMulti(key, v, chips); });
+          panel.appendChild(label);
+        });
         th.appendChild(wrap);
-      } else { // text
-        const inp = document.createElement('input');
-        inp.type = 'text'; inp.placeholder = 'фильтр';
-        inp.className = 'filter-input';
-        inp.addEventListener('input', () => { setColFilter(key, { kind:'text', value: inp.value.toLowerCase() }); });
+      } else if (NUMERIC_TYPES.has(col.type)){
+        // диапазон для чисел/процентов
+        const rng = document.createElement('div'); rng.className='range';
+        const min = document.createElement('input'); const max = document.createElement('input');
+        min.type='text'; max.type='text'; min.placeholder='мин'; max.placeholder='макс';
+        min.className='filter-min'; max.className='filter-max';
+        const handler = ()=>{ setColFilter(key,{ kind:'range', min: parseMaybeNumber(min.value,col.type), max: parseMaybeNumber(max.value,col.type) }); };
+        min.addEventListener('input', handler); max.addEventListener('input', handler);
+        rng.appendChild(min); rng.appendChild(max); th.appendChild(rng);
+      } else {
+        // запасной текстовый фильтр
+        const inp = document.createElement('input'); inp.type='text'; inp.placeholder='фильтр'; inp.className='filter-input';
+        inp.addEventListener('input', ()=> setColFilter(key,{kind:'text', value: inp.value.toLowerCase()}));
         th.appendChild(inp);
       }
 
@@ -263,157 +247,98 @@
     }
   }
 
-  function parseMaybeNumber(str, type){
-    const s = String(str || '').trim();
-    if (!s) return null;
-    if (type === 'pct2') {
-      const v = s.endsWith('%') ? parseFloat(s) / 100 : Number(s);
-      return Number.isFinite(v) ? v : null;
-    }
-    const v = Number(s.replace(',', '.'));
-    return Number.isFinite(v) ? v : null;
+  function toggleMulti(key, value, chipsEl){
+    const cur = state.colFilters[key] || { kind:'multi', set: new Set() };
+    if (!(cur.set instanceof Set)) cur.set = new Set(cur.set);
+    if (cur.set.has(value)) cur.set.delete(value); else cur.set.add(value);
+    state.colFilters[key] = cur; updateChips(key, chipsEl, cur.set); applyFilterAndRender();
   }
+  function updateChips(key, chipsEl, set){ chipsEl.innerHTML=''; for (const v of set){ const span=document.createElement('span'); span.className='chip'; span.textContent=String(v); chipsEl.appendChild(span);} }
 
-  function setColFilter(key, conf){
-    state.colFilters[key] = conf;
-    applyFilterAndRender();
-  }
+  function parseMaybeNumber(str, type){ const s = String(str||'').trim(); if (!s) return null; const v = type==='pct2' ? (s.endsWith('%')? parseFloat(s)/100 : Number(s.replace(',','.'))) : Number(s.replace(',','.')); return Number.isFinite(v)?v:null; }
+  function setColFilter(key, conf){ state.colFilters[key]=conf; applyFilterAndRender(); }
+  function resetFilters(){ state.filterText=''; state.colFilters={}; $q.value=''; $filterRow.querySelectorAll('input').forEach(i=>{ if(i.type==='checkbox') i.checked=false; else i.value='';}); applyFilterAndRender(); }
 
-  function resetFilters(){
-    state.filterText = '';
-    state.colFilters = {};
-    $q.value = '';
-    // clear UI inputs
-    $filterRow.querySelectorAll('input').forEach(i => i.value = '');
-    $filterRow.querySelectorAll('select').forEach(s => s.value = '');
-    applyFilterAndRender();
-  }
-
-  function onSort(key){
-    const prev = state.sort.key;
-    if (prev === key) state.sort.dir *= -1; else state.sort = { key, dir: 1 };
-    applyFilterAndRender();
-  }
+  // ===== Filtering/Sorting/Rendering =====
+  function onSort(key){ const prev=state.sort.key; state.sort = (prev===key)? {key, dir: state.sort.dir*-1} : {key, dir:1}; applyFilterAndRender(); }
 
   function applyFilterAndRender(){
-    // global filter
-    const q = state.filterText;
-    let rows = !q ? state.raw.slice() : state.raw.filter(row =>
-      DISPLAY_COLUMNS.some(k => String(formatForSearch(row[k])).toLowerCase().includes(q))
-    );
+    // 1) Глобальный фильтр по предсобранной строке (быстро)
+    const q = state.filterText; let rows = !q ? state.raw.slice() : state.raw.filter(r => r.__search.includes(q));
 
-    // per-column filters
+    // 2) Фильтры по столбцам
     rows = rows.filter(r => passColumnFilters(r));
 
-    // sort
-    const { key, dir } = state.sort;
-    if (key) rows.sort((a,b) => cmp(a[key], b[key], SCHEMA_MAP.get(key).type) * dir);
+    // 3) Сортировка
+    const { key, dir } = state.sort; if (key){ const t = SCHEMA_MAP.get(key).type; rows.sort((a,b)=> cmp(a[key], b[key], t) * dir); }
 
     state.filtered = rows;
-    render();
+    renderChunked();
   }
 
   function passColumnFilters(r){
     for (const [key, conf] of Object.entries(state.colFilters)){
-      if (!conf) continue;
-      const t = SCHEMA_MAP.get(key).type;
-      const v = r[key];
-      if (conf.kind === 'text'){
-        const s = String(v ?? '').toLowerCase();
-        if (!s.includes(conf.value)) return false;
-      } else if (conf.kind === 'bool'){
-        if (conf.value === '') { /* all */ }
-        else if (conf.value === '1' && v !== true) return false;
-        else if (conf.value === '0' && v !== false) return false;
-      } else if (conf.kind === 'range'){
-        const {min, max} = conf;
-        if (min != null && (v == null || v < min)) return false;
-        if (max != null && (v == null || v > max)) return false;
-      }
+      if (!conf) continue; const t = SCHEMA_MAP.get(key).type; const v = r[key];
+      if (conf.kind==='text'){ const s=String(v??'').toLowerCase(); if (!s.includes(conf.value)) return false; }
+      else if (conf.kind==='range'){ const {min,max}=conf; if (min!=null && (v==null || v<min)) return false; if (max!=null && (v==null || v>max)) return false; }
+      else if (conf.kind==='multi'){ const set = conf.set instanceof Set ? conf.set : new Set(conf.set); if (set.size && !set.has(v)) return false; }
     }
     return true;
   }
 
-  function formatForSearch(v){
-    if (typeof v === 'number') return v;
-    if (typeof v === 'boolean') return v ? 'true' : 'false';
-    return v ?? '';
+  function cmp(a,b,t){ if (a==null && b==null) return 0; if (a==null) return 1; if (b==null) return -1; return NUMERIC_TYPES.has(t) ? (a-b) : String(a).localeCompare(String(b),'ru',{sensitivity:'base'}); }
+
+  // Быстрый рендер большими пачками, чтобы UI не зависал
+  function renderChunked(){
+    $counts.textContent = `${state.filtered.length} строк` + (state.filtered.length!==state.raw.length ? ` из ${state.raw.length}` : '');
+
+    const mm = computeMinMax(state.filtered);
+    $tbody.innerHTML='';
+
+    const batch = 800; let i = 0;
+    function tick(){
+      const frag = document.createDocumentFragment();
+      for (let c=0; c<batch && i<state.filtered.length; c++, i++){
+        const row = state.filtered[i];
+        const tr = document.createElement('tr');
+        for (const key of DISPLAY_COLUMNS){
+          const col = SCHEMA_MAP.get(key); const td = document.createElement('td');
+          if (col.type==='bool') td.classList.add('bool');
+          if (NUMERIC_TYPES.has(col.type)) td.classList.add('num','heat');
+          const val = row[key]; td.textContent = formatCell(val, col.type);
+          if (NUMERIC_TYPES.has(col.type)) applySolidHeat(td, val, mm.get(key));
+          tr.appendChild(td);
+        }
+        frag.appendChild(tr);
+      }
+      $tbody.appendChild(frag);
+      if (i < state.filtered.length) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+
+    // обновить индикаторы сортировки
+    [...$theadRow.children].forEach(th=>{ const k=th.dataset.key; const span=th.querySelector('.sort'); span.textContent = (state.sort.key===k) ? (state.sort.dir===1?'▲':'▼') : ''; });
   }
 
-  function cmp(a,b,t){
-    if (a == null && b == null) return 0;
-    if (a == null) return 1;
-    if (b == null) return -1;
-    if (NUMERIC_TYPES.has(t)) return a - b;
-    return String(a).localeCompare(String(b), 'ru', { sensitivity: 'base' });
-  }
-
-  function render(){
-    // header sort markers
-    [...$theadRow.children].forEach(th => {
-      const key = th.dataset.key;
-      const span = th.querySelector('.sort');
-      span.textContent = (state.sort.key === key) ? (state.sort.dir === 1 ? '▲' : '▼') : '';
-    });
-
-    // counts
-    $counts.textContent = `${state.filtered.length} строк` + (state.filtered.length !== state.raw.length ? ` из ${state.raw.length}` : '');
-
-    // heat min/max on filtered
+  function computeMinMax(rows){
     const mm = new Map();
     for (const key of DISPLAY_COLUMNS){
-      const col = SCHEMA_MAP.get(key);
-      if (!NUMERIC_TYPES.has(col.type)) continue;
-      let min = Infinity, max = -Infinity;
-      for (const r of state.filtered){
-        const v = r[key];
-        if (v == null) continue;
-        if (v < min) min = v; if (v > max) max = v;
-      }
-      if (min === Infinity) min = max = null;
-      mm.set(key, {min, max});
+      const col = SCHEMA_MAP.get(key); if (!NUMERIC_TYPES.has(col.type)) continue;
+      let min=Infinity, max=-Infinity; for (const r of rows){ const v=r[key]; if (v==null) continue; if (v<min) min=v; if (v>max) max=v; }
+      if (min===Infinity) min=max=null; mm.set(key,{min,max});
     }
-
-    // rows
-    const frag = document.createDocumentFragment();
-    $tbody.innerHTML = '';
-    for (const row of state.filtered){
-      const tr = document.createElement('tr');
-      for (const key of DISPLAY_COLUMNS){
-        const col = SCHEMA_MAP.get(key);
-        const td = document.createElement('td');
-        if (col.type === 'bool') td.classList.add('bool');
-        if (NUMERIC_TYPES.has(col.type)) td.classList.add('num','heat');
-        if (col.cls) td.classList.add(...col.cls.split(' '));
-        const val = row[key];
-        td.textContent = formatCell(val, col.type);
-
-        if (NUMERIC_TYPES.has(col.type)){
-          const {min, max} = mm.get(key);
-          if (min != null && max != null && max > min){
-            const norm = (val == null) ? 0 : (val - min) / (max - min);
-            const hue = 120 * norm; // 0..120 (red->green via hsl)
-            td.style.background = `linear-gradient(90deg, rgba(0,0,0,0), hsla(${hue}, 80%, 30%, 0.35))`;
-          } else {
-            td.style.background = 'transparent';
-          }
-        }
-
-        tr.appendChild(td);
-      }
-      frag.appendChild(tr);
-    }
-    $tbody.appendChild(frag);
+    return mm;
   }
 
-  function formatCell(v, t){
-    if (v == null || v === '') return '—';
-    if (t === 'int') return String(v);
-    if (t === 'float2') return v.toFixed(2);
-    if (t === 'pct2') return (v * 100).toFixed(2) + '%';
-    if (t === 'bool') return v ? '✓' : '';
-    return String(v);
+  // Сплошная заливка вместо градиента
+  function applySolidHeat(td, val, mm){
+    const {min,max} = mm || {}; if (min==null || max==null || max<=min || val==null){ td.style.backgroundColor='transparent'; return; }
+    const norm = (val - min) / (max - min); // 0..1
+    const hue = 120 * norm; // 0..120 (red->green)
+    td.style.backgroundColor = `hsla(${hue}, 80%, 30%, 0.42)`; // сплошная, умеренная
   }
+
+  function formatCell(v,t){ if (v==null || v==='') return '—'; if (t==='int') return String(v); if (t==='float2') return v.toFixed(2); if (t==='pct2') return (v*100).toFixed(2)+'%'; if (t==='bool') return v?'✓':''; return String(v); }
   </script>
 </body>
 </html>
