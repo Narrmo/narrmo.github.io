@@ -3,25 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Stats.csv — Фильтры + сохранение в URL</title>
+  <title>Stats.csv — все фичи (виртуализация + воркер + URL + пагинация + фильтры)</title>
   <style>
-    :root { --bg:#0b0d10; --muted:#7e8a9a; --text:#e9eef5; --border:#242a33; --header:#0f1216; --toolbar-h:58px; --th-h:40px; }
+    :root {
+      --bg:#0b0d10; --muted:#7e8a9a; --text:#e9eef5; --border:#242a33;
+      --header:#0f1216; --toolbar-h:58px; --th-h:40px;
+    }
     *{ box-sizing:border-box }
     html, body { height:100% }
     body { margin:0; font:12px/1.25 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,"Noto Sans",sans-serif; background:var(--bg); color:var(--text) }
 
-    .toolbar { display:flex; gap:12px; align-items:center; padding:14px 16px; position:sticky; top:0; z-index:5; background:linear-gradient(180deg,var(--header),transparent); border-bottom:1px solid var(--border) }
+    /* Верхняя панель */
+    .toolbar { display:flex; gap:12px; align-items:center; padding:14px 16px; height:var(--toolbar-h) }
     .toolbar h1 { font-size:16px; margin:0 8px 0 0; color:#cfe3ff; letter-spacing:.2px }
     .search { flex:1; position:relative }
     .search input { width:100%; padding:10px 36px; border-radius:10px; border:1px solid var(--border); background:#0e1218; color:var(--text); outline:none }
     .search svg { position:absolute; left:10px; top:50%; transform:translateY(-50%); opacity:.7 }
     .meta { color:var(--muted); font-size:12px }
+    .btn { border:1px solid var(--border); background:#0e1218; color:var(--text); padding:8px 10px; border-radius:10px; cursor:pointer }
 
-    .table-wrap { max-height: calc(100vh - 120px); overflow:auto }
+    /* Область таблицы */
+    .table-wrap { height: calc(100vh - var(--toolbar-h)); overflow:auto; }
     table { width:100%; border-collapse:separate; border-spacing:0 }
+
+    /* Две строки заголовка — обе sticky внутри .table-wrap */
     thead th { background:#0f1216; color:#c7d2e3; font-weight:600; text-align:left; padding:8px 8px; border-bottom:1px solid var(--border); white-space:nowrap }
-    thead tr:nth-child(1) th { position:sticky; top:58px; z-index:3; height:var(--th-h) }
-    thead tr:nth-child(2) th { position:sticky; top:calc(58px + var(--th-h)); z-index:2; background:#0d1015 }
+    thead tr:nth-child(1) th { position:sticky; top:0; z-index:3; height:var(--th-h) }
+    thead tr:nth-child(2) th { position:sticky; top:var(--th-h); z-index:2; background:#0d1015 }
+
     thead th.sortable { cursor:pointer }
     thead th .sort { opacity:.6; margin-left:6px; font-size:11px }
 
@@ -36,24 +45,22 @@
     .filter-input, .filter-min, .filter-max { width:100%; padding:6px 8px; border-radius:8px; border:1px solid var(--border); background:#0e1218; color:var(--text); outline:none }
     .range { display:flex; gap:6px }
 
-    /* Мультиселект */
+    /* Мультиселект с поиском */
     .multi { position:relative }
     .multi details { width:100% }
     .multi summary { list-style:none; cursor:pointer; padding:6px 8px; border:1px solid var(--border); border-radius:8px; background:#0e1218 }
-    .multi summary::marker{ display:none }
+    .multi summary::marker { display:none }
     .multi .panel { position:absolute; top:38px; left:0; min-width:220px; max-width:360px; max-height:260px; overflow:auto; background:#0f1216; border:1px solid var(--border); border-radius:10px; padding:8px; z-index:10; box-shadow:0 10px 30px rgba(0,0,0,.35) }
     .multi .panel .panel-search { width:100%; margin-bottom:6px; padding:6px 8px; border-radius:8px; border:1px solid var(--border); background:#0e1218; color:var(--text) }
     .multi .panel label { display:flex; align-items:center; gap:8px; padding:4px 6px }
     .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px }
     .chip { font-size:12px; border:1px solid var(--border); padding:2px 6px; border-radius:999px; background:#11161d }
 
-    /* Сплошная заливка теплокарты */
-    .heat { transition:background-color .06s ease }
+    .heat { transition: background-color .06s ease }
 
     /* Пагинация */
     .pager { display:flex; gap:8px; align-items:center; margin-left:8px }
-    .pager select, .pager input { background:#0e1218; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:6px 8px }
-    .btn { border:1px solid var(--border); background:#0e1218; color:var(--text); padding:8px 10px; border-radius:10px; cursor:pointer }
+    .pager select { background:#0e1218; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:6px 8px }
   </style>
 </head>
 <body>
@@ -65,15 +72,22 @@
     </div>
     <div class="pager">
       <label class="meta">Строк/стр:</label>
-      <select id="pageSize"><option value="0">Все</option><option value="200">200</option><option value="500" selected>500</option><option value="1000">1 000</option></select>
+      <select id="pageSize">
+        <option value="0">Все</option>
+        <option value="100" selected>100</option>
+        <option value="200">200</option>
+        <option value="500">500</option>
+        <option value="1000">1 000</option>
+      </select>
       <button class="btn" id="prev">◀</button>
       <span class="meta" id="pageInfo">—</span>
       <button class="btn" id="next">▶</button>
+      <button class="btn" id="reset">Сбросить</button>
     </div>
     <div class="meta" id="counts"></div>
   </div>
 
-  <div class="table-wrap">
+  <div class="table-wrap" id="viewport">
     <table id="tbl">
       <thead>
         <tr id="thead-row"></tr>
@@ -85,277 +99,343 @@
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script>
-  // ===== Schema (строго эти столбцы) =====
+  // ===== Schema =====
   const SCHEMA = [
-    { key: 'name',           label: 'name',           type: 'text' },
-    { key: 'total games',    label: 'total games',    type: 'int' },
-    { key: 'win rate',       label: 'win rate',       type: 'pct2', heat:true },
-    { key: 'spawn / g',      label: 'spawn / g',      type: 'float2', heat:true },
-    { key: 'lvling',         label: 'lvling',         type: 'float2', heat:true },
-    { key: 'farm',           label: 'farm',           type: 'float2', heat:true },
-    { key: 'ground / game',  label: 'ground / game',  type: 'float2', heat:true },
-    { key: 'air / game',     label: 'air / game',     type: 'float2', heat:true },
-    { key: 'naval / game',   label: 'naval / game',   type: 'float2', heat:true },
-    { key: 'ground / spawn', label: 'ground / spawn', type: 'float2', heat:true },
-    { key: 'air / spawn',    label: 'air / spawn',    type: 'float2', heat:true },
-    { key: 'naval / spawn',  label: 'naval / spawn',  type: 'float2', heat:true },
-    { key: 'ground / death', label: 'ground / death', type: 'float2', heat:true },
-    { key: 'air / death',    label: 'air / death',    type: 'float2', heat:true },
-    { key: 'naval / death',  label: 'naval / death',  type: 'float2', heat:true },
-    { key: 'mode',           label: 'mode',           type: 'text' },
-    { key: 'Class',          label: 'Class',          type: 'text' },
-    { key: 'Move Type',      label: 'Move Type',      type: 'text' },
-    { key: 'rank',           label: 'rank',           type: 'int' },
-    { key: 'BR / a',         label: 'BR / a',         type: 'float2', heat:true },
-    { key: 'BR / r',         label: 'BR / r',         type: 'float2', heat:true },
-    { key: 'BR / s',         label: 'BR / s',         type: 'float2', heat:true },
-    { key: 'BRTank / r',     label: 'BRTank / r',     type: 'float2', heat:true },
-    { key: 'BRTank / s',     label: 'BRTank / s',     type: 'float2', heat:true },
-    { key: 'country',        label: 'country',        type: 'text' },
-    { key: 'Prem',           label: 'Prem',           type: 'bool' },
-    { key: 'Event',          label: 'Event',          type: 'bool' },
-    { key: 'Gift',           label: 'Gift',           type: 'bool' },
-    { key: 'Normal',         label: 'Normal',         type: 'bool' },
+    { key:'name', label:'name', type:'text' },
+    { key:'total games', label:'total games', type:'int' },
+    { key:'win rate', label:'win rate', type:'pct2', heat:true },
+    { key:'spawn / g', label:'spawn / g', type:'float2', heat:true },
+    { key:'lvling', label:'lvling', type:'float2', heat:true },
+    { key:'farm', label:'farm', type:'float2', heat:true },
+    { key:'ground / game', label:'ground / game', type:'float2', heat:true },
+    { key:'air / game', label:'air / game', type:'float2', heat:true },
+    { key:'naval / game', label:'naval / game', type:'float2', heat:true },
+    { key:'ground / spawn', label:'ground / spawn', type:'float2', heat:true },
+    { key:'air / spawn', label:'air / spawn', type:'float2', heat:true },
+    { key:'naval / spawn', label:'naval / spawn', type:'float2', heat:true },
+    { key:'ground / death', label:'ground / death', type:'float2', heat:true },
+    { key:'air / death', label:'air / death', type:'float2', heat:true },
+    { key:'naval / death', label:'naval / death', type:'float2', heat:true },
+    { key:'mode', label:'mode', type:'text' },
+    { key:'Class', label:'Class', type:'text' },
+    { key:'Move Type', label:'Move Type', type:'text' },
+    { key:'rank', label:'rank', type:'int' },
+    { key:'BR / a', label:'BR / a', type:'float2', heat:true },
+    { key:'BR / r', label:'BR / r', type:'float2', heat:true },
+    { key:'BR / s', label:'BR / s', type:'float2', heat:true },
+    { key:'BRTank / r', label:'BRTank / r', type:'float2', heat:true },
+    { key:'BRTank / s', label:'BRTank / s', type:'float2', heat:true },
+    { key:'country', label:'country', type:'text' },
+    { key:'Prem', label:'Prem', type:'bool' },
+    { key:'Event', label:'Event', type:'bool' },
+    { key:'Gift', label:'Gift', type:'bool' },
+    { key:'Normal', label:'Normal', type:'bool' },
   ];
   const SCHEMA_MAP = new Map(SCHEMA.map(c=>[c.key,c]));
   const DISPLAY_COLUMNS = SCHEMA.map(c=>c.key);
   const NUMERIC_TYPES = new Set(['int','float2','pct2']);
 
+  // ===== State =====
   const state = {
     raw: [],
-    filtered: [],
-    sort: { key: null, dir: 1 },
-    filterText: '',
-    colFilters: {},
     uniques: new Map(),
+    filteredIdx: [], // индексы после воркера
+    sort: { key:null, dir:1 },
+    filterText: '',
+    colFilters: {}, // {key:{kind:'multi'|'range'|'text', ...}}
     page: 1,
     pageSize: 100,
+    rowHeight: null,
+    mmPage: null, // min/max по текущей странице
   };
 
-  const $theadRow = document.querySelector('#thead-row');
-  const $filterRow = document.querySelector('#filter-row');
-  const $tbody = document.querySelector('#tbody');
-  const $counts = document.querySelector('#counts');
-  const $q = document.querySelector('#q');
-  const $prev = document.querySelector('#prev');
-  const $next = document.querySelector('#next');
-  const $pageInfo = document.querySelector('#pageInfo');
-  const $pageSize = document.querySelector('#pageSize');
+  // ===== DOM =====
+  const $theadRow = document.getElementById('thead-row');
+  const $filterRow = document.getElementById('filter-row');
+  const $tbody = document.getElementById('tbody');
+  const $counts = document.getElementById('counts');
+  const $q = document.getElementById('q');
+  const $prev = document.getElementById('prev');
+  const $next = document.getElementById('next');
+  const $pageInfo = document.getElementById('pageInfo');
+  const $pageSize = document.getElementById('pageSize');
+  const $viewport = document.getElementById('viewport');
+  const $reset = document.getElementById('reset');
 
-  // ==== Инициализация ====
+  // ===== Worker (кастом) =====
+  const workerCode = `
+    let RAW=[], DISPLAY_COLUMNS=[], SCHEMA_MAP=null, NUMERIC_TYPES=new Set();
+    function buildSearchString(r){
+      return DISPLAY_COLUMNS.map(k=>{ const v=r[k]; if(typeof v==='number') return v; if(typeof v==='boolean') return v?'true':'false'; return v??''; }).join(' | ').toLowerCase();
+    }
+    function passColumnFilters(r, colFilters){
+      for(const [key,conf] of Object.entries(colFilters||{})){
+        if(!conf) continue; const t=(SCHEMA_MAP.get(key)||{}).type; const v=r[key];
+        if(conf.kind==='text'){ const s=String(v??'').toLowerCase(); if(!s.includes(conf.value)) return false; }
+        else if(conf.kind==='range'){ const {min,max}=conf; if(min!=null && (v==null||v<min)) return false; if(max!=null && (v==null||v>max)) return false; }
+        else if(conf.kind==='multi'){ const set = new Set(conf.set||conf.values||[]); if(set.size && !set.has(v)) return false; }
+      }
+      return true;
+    }
+    function cmp(a,b,t){ if(a==null&&b==null) return 0; if(a==null) return 1; if(b==null) return -1; return (['int','float2','pct2'].includes(t)?(a-b):String(a).localeCompare(String(b),'ru',{sensitivity:'base'})); }
+    onmessage = (e)=>{
+      const {type} = e.data;
+      if(type==='init'){
+        RAW = e.data.raw; DISPLAY_COLUMNS=e.data.cols; NUMERIC_TYPES=new Set(e.data.numericTypes); SCHEMA_MAP = new Map(e.data.schema.map(c=>[c.key,c]));
+        for(const r of RAW){ r.__search = buildSearchString(r); }
+        postMessage({type:'inited'});
+      } else if(type==='filter'){
+        const { q, sortKey, sortDir, colFilters } = e.data;
+        let idx = [];
+        const hasQ = !!q;
+        const qq = hasQ ? q.toLowerCase() : '';
+        for(let i=0;i<RAW.length;i++){
+          const r = RAW[i];
+          if(hasQ && !r.__search.includes(qq)) continue;
+          if(!passColumnFilters(r, colFilters)) continue;
+          idx.push(i);
+        }
+        if(sortKey){
+          const t=(SCHEMA_MAP.get(sortKey)||{}).type; idx.sort((ia,ib)=>{ const a=RAW[ia][sortKey]; const b=RAW[ib][sortKey]; return cmp(a,b,t) * sortDir; });
+        }
+        postMessage({type:'filtered', idx});
+      }
+    };
+  `;
+  const worker = new Worker(URL.createObjectURL(new Blob([workerCode], {type:'text/javascript'})));
+
+  // ===== Init =====
   init();
   async function init(){
-    const res = await fetch('stats.csv', { cache:'no-store' });
-    if (!res.ok){ $counts.textContent = 'Ошибка загрузки CSV'; return; }
-    const text = await res.text();
-    const parsed = Papa.parse(text, { header:true, skipEmptyLines:true });
-    const rows = (parsed.data||[]).map(coerceRow).map(keepWhitelisted);
-    state.raw = rows.map(r => ({ ...r, __search: buildSearchString(r) }));
-    computeUniques();
+    // Заголовок
     buildHeader();
+
+    // CSV parse (в воркере PapaParse)
+    const res = await fetch('stats.csv', { cache:'no-store' });
+    if(!res.ok){ $counts.textContent='Ошибка загрузки CSV'; return; }
+    const text = await res.text();
+    const parsed = await new Promise(resolve=>{
+      Papa.parse(text, { header:true, skipEmptyLines:true, worker:true, complete: resolve });
+    });
+    const rows = (parsed.data||[]).map(coerceRow).map(keepWhitelisted);
+    state.raw = rows;
+
+    // uniques для мультиселектов
+    computeUniques();
     buildFilters();
-    // восстановить состояние из URL
-    restoreFromURL();
-    applyFilterAndRender();
+
+    // Инициализируем воркер
+    worker.postMessage({ type:'init', raw: state.raw, cols: DISPLAY_COLUMNS, numericTypes:[...NUMERIC_TYPES], schema: SCHEMA });
+    worker.onmessage = (e)=>{
+      const {type} = e.data;
+      if(type==='inited'){
+        // восстановить URL-состояние и запустить фильтрацию
+        restoreFromURL();
+        // проставить pageSize в селекте
+        $pageSize.value = String(state.pageSize);
+        runFilter();
+      } else if(type==='filtered'){
+        state.filteredIdx = e.data.idx;
+        updateCounts();
+        // если текущая страница ушла за предел — поправить
+        const tp = totalPages(); if(state.page>tp) state.page=tp;
+        // перерендер
+        renderVirtualized(true);
+      }
+    };
+
     bindUI();
   }
 
+  // ===== Helpers =====
   function keepWhitelisted(row){ const out={}; for(const k of DISPLAY_COLUMNS) if(k in row) out[k]=row[k]; return out; }
   function coerceRow(row){ const out={}; for(const [k,v] of Object.entries(row)){ if(!SCHEMA_MAP.has(k)) continue; out[k]=coerce(v, SCHEMA_MAP.get(k).type); } return out; }
-  function coerce(v,t){ const s=String(v??'').trim(); if(t==='text') return s; if(t==='bool'){ const k=s.toLowerCase(); return ['true','1','yes','y','да','истина','✓'].includes(k); } if(t==='int'){ const n=Number(s.replace(/\\s+/g,'')); return Number.isFinite(n)?n:null; } if(t==='float2'||t==='pct2'){ if(!s) return null; const num=s.endsWith('%')? parseFloat(s)/100 : Number(s.replace(',','.')); return Number.isFinite(num)?num:null; } return s; }
-  function buildSearchString(r){ return DISPLAY_COLUMNS.map(k=>{ const v=r[k]; if(typeof v==='number') return v; if(typeof v==='boolean') return v?'true':'false'; return v??''; }).join(' | ').toLowerCase(); }
+  function coerce(v,t){ const s=String(v??'').trim(); if(t==='text') return s; if(t==='bool'){ const k=s.toLowerCase(); return ['true','1','yes','y','да','истина','✓'].includes(k); } if(t==='int'){ const n=Number(s.replace(/\s+/g,'')); return Number.isFinite(n)?n:null; } if(t==='float2'||t==='pct2'){ if(!s) return null; const num = s.endsWith('%')? parseFloat(s)/100 : Number(s.replace(',','.')); return Number.isFinite(num)?num:null; } return s; }
+  function formatCell(v,t){ if(v==null||v==='') return '—'; if(t==='int') return String(v); if(t==='float2') return v.toFixed(2); if(t==='pct2') return (v*100).toFixed(2)+'%'; if(t==='bool') return v?'✓':''; return String(v); }
 
-  // ==== Header + сортировка ====
-  function buildHeader(){
-    $theadRow.innerHTML='';
-    for (const key of DISPLAY_COLUMNS){
-      const col = SCHEMA_MAP.get(key);
-      const th = document.createElement('th');
-      th.textContent = col.label;
-      th.className = 'sortable';
-      th.dataset.key = key;
-      const sortSpan = document.createElement('span'); sortSpan.className='sort'; sortSpan.textContent=''; th.appendChild(sortSpan);
-      th.addEventListener('click', ()=> onSort(key));
-      $theadRow.appendChild(th);
-    }
-  }
-  function onSort(key){ const prev = state.sort.key; state.sort = (prev===key) ? {key, dir: state.sort.dir*-1} : {key, dir:1}; applyFilterAndRender(); }
-
-  // ==== Фильтры по столбцам (multi / диапазон / текст) ====
   function computeUniques(){
-    for (const key of DISPLAY_COLUMNS){
+    for(const key of DISPLAY_COLUMNS){
       const set = new Set();
-      for (const r of state.raw){ const v=r[key]; if (v===''||v==null) continue; set.add(v); if (set.size>1000) break; }
+      for(const r of state.raw){ const v=r[key]; if(v===''||v==null) continue; set.add(v); if(set.size>1000) break; }
       const arr = Array.from(set).sort((a,b)=>{ const t=SCHEMA_MAP.get(key).type; return NUMERIC_TYPES.has(t)?(a-b):String(a).localeCompare(String(b),'ru'); });
       state.uniques.set(key, arr);
     }
   }
+
+  // ===== Header =====
+  function buildHeader(){
+    $theadRow.innerHTML='';
+    for(const key of DISPLAY_COLUMNS){ const col=SCHEMA_MAP.get(key); const th=document.createElement('th'); th.textContent=col.label; th.className='sortable'; th.dataset.key=key; const s=document.createElement('span'); s.className='sort'; th.appendChild(s); th.addEventListener('click',()=> onSort(key)); $theadRow.appendChild(th); }
+  }
+  function onSort(key){ const prev=state.sort.key; state.sort = (prev===key)? {key,dir:state.sort.dir*-1} : {key,dir:1}; markSort(); runFilter(); }
+  function markSort(){ [...$theadRow.children].forEach(th=>{ const k=th.dataset.key; const s=th.querySelector('.sort'); s.textContent = (state.sort.key===k)? (state.sort.dir===1?'▲':'▼') : ''; }); }
+
+  // ===== Filters UI =====
   function buildFilters(){
     $filterRow.innerHTML='';
-    for (const key of DISPLAY_COLUMNS){
+    for(const key of DISPLAY_COLUMNS){
       const col = SCHEMA_MAP.get(key);
       const th = document.createElement('th'); th.className='filter-cell';
-
-      if (col.type==='bool' || col.type==='text' || (col.type==='int' && state.uniques.get(key).length<=50)){
-        // Мульти-селект + поиск
-        const wrap = document.createElement('div'); wrap.className='multi';
-        wrap.innerHTML = `<details><summary>выбрать…</summary><div class="panel"><input class="panel-search" placeholder="поиск по списку"/><div class="opts"></div></div></details><div class="chips" data-key="${key}"></div>`;
-        const panel = wrap.querySelector('.panel');
-        const search = panel.querySelector('.panel-search');
-        const opts = panel.querySelector('.opts');
-        const chips = wrap.querySelector('.chips');
+      if(col.type==='bool' || col.type==='text' || (col.type==='int' && state.uniques.get(key).length<=50)){
+        const wrap=document.createElement('div'); wrap.className='multi';
+        wrap.innerHTML=`<details><summary>выбрать…</summary><div class="panel"><input class="panel-search" placeholder="поиск по списку"/><div class="opts"></div></div></details><div class="chips" data-key="${key}"></div>`;
+        const panel=wrap.querySelector('.panel'); const search=panel.querySelector('.panel-search'); const opts=panel.querySelector('.opts'); const chips=wrap.querySelector('.chips');
         const values = state.uniques.get(key);
-
         function renderOptions(filter=''){
-          opts.innerHTML='';
-          const f = filter.toLowerCase();
+          opts.innerHTML=''; const f=filter.toLowerCase();
+          const selected = (state.colFilters[key] && state.colFilters[key].kind==='multi') ? (state.colFilters[key].set instanceof Set ? state.colFilters[key].set : new Set(state.colFilters[key].set)) : new Set();
           values.forEach(v=>{
-            const txt = String(formatCell(v,col.type));
-            if (f && !txt.toLowerCase().includes(f)) return;
-            const id = `f_${key}_${String(v).replace(/[^\\w]+/g,'_')}`;
-            const label = document.createElement('label');
-            label.innerHTML = `<input type="checkbox" id="${id}"> <span>${txt}</span>`;
-            const cb = label.querySelector('input');
-            cb.addEventListener('change', ()=>{ toggleMulti(key, v, chips); });
-            opts.appendChild(label);
+            const txt=String(formatCell(v,col.type)); if(f && !txt.toLowerCase().includes(f)) return;
+            const id=`f_${key}_${String(v).replace(/[^\w]+/g,'_')}`; const label=document.createElement('label');
+            const checked = selected.has(v) ? 'checked' : '';
+            label.innerHTML=`<input type="checkbox" id="${id}" ${checked}> <span>${txt}</span>`;
+            const cb=label.querySelector('input'); cb.addEventListener('change',()=> toggleMulti(key, v, chips)); opts.appendChild(label);
           });
         }
-        renderOptions();
-        search.addEventListener('input', ()=> renderOptions(search.value));
-        th.appendChild(wrap);
-      } else if (NUMERIC_TYPES.has(col.type)){
-        // Диапазон min/max
-        const rng = document.createElement('div'); rng.className='range';
-        const min = document.createElement('input'); const max = document.createElement('input');
+        renderOptions(); search.addEventListener('input',()=> renderOptions(search.value)); th.appendChild(wrap);
+      }
+      else if(NUMERIC_TYPES.has(col.type)){
+        const rng=document.createElement('div'); rng.className='range';
+        const min=document.createElement('input'); const max=document.createElement('input');
         min.type='text'; max.type='text'; min.placeholder='мин'; max.placeholder='макс';
         min.className='filter-min'; max.className='filter-max';
-        const handler = ()=> setColFilter(key,{ kind:'range', min: parseMaybeNumber(min.value,col.type), max: parseMaybeNumber(max.value,col.type) });
-        min.addEventListener('input', handler); max.addEventListener('input', handler);
-        rng.appendChild(min); rng.appendChild(max); th.appendChild(rng);
-      } else {
-        // Резервный текстовый
-        const inp = document.createElement('input'); inp.type='text'; inp.placeholder='фильтр'; inp.className='filter-input';
-        inp.addEventListener('input', ()=> setColFilter(key,{ kind:'text', value: inp.value.toLowerCase() }));
-        th.appendChild(inp);
+        const handler=()=> setColFilter(key,{kind:'range', min: parseMaybeNumber(min.value,col.type), max: parseMaybeNumber(max.value,col.type)});
+        min.addEventListener('input',handler); max.addEventListener('input',handler);
+        th.appendChild(rng); rng.appendChild(min); rng.appendChild(max);
       }
-
+      else{
+        const inp=document.createElement('input'); inp.type='text'; inp.placeholder='фильтр'; inp.className='filter-input'; inp.addEventListener('input',()=> setColFilter(key,{kind:'text', value: inp.value.toLowerCase()})); th.appendChild(inp);
+      }
       $filterRow.appendChild(th);
     }
   }
 
   function toggleMulti(key, value, chipsEl){
     const cur = state.colFilters[key] || { kind:'multi', set:new Set() };
-    if (!(cur.set instanceof Set)) cur.set = new Set(cur.set);
-    if (cur.set.has(value)) cur.set.delete(value); else cur.set.add(value);
-    state.colFilters[key] = cur; updateChips(chipsEl, cur.set); applyFilterAndRender();
+    if(!(cur.set instanceof Set)) cur.set = new Set(cur.set);
+    if(cur.set.has(value)) cur.set.delete(value); else cur.set.add(value);
+    state.colFilters[key] = cur; updateChips(chipsEl, cur.set); runFilter();
   }
-  function updateChips(chipsEl, set){ chipsEl.innerHTML=''; for(const v of set){ const s=document.createElement('span'); s.className='chip'; s.textContent=String(v); chipsEl.appendChild(s);} }
-  function parseMaybeNumber(str, type){ const s=String(str||'').trim(); if(!s) return null; const v = type==='pct2' ? (s.endsWith('%')? parseFloat(s)/100 : Number(s.replace(',','.'))) : Number(s.replace(',','.')); return Number.isFinite(v)?v:null; }
-  function setColFilter(key, conf){ state.colFilters[key]=conf; applyFilterAndRender(); }
+  function updateChips(chipsEl,set){ chipsEl.innerHTML=''; for(const v of set){ const span=document.createElement('span'); span.className='chip'; span.textContent=String(v); chipsEl.appendChild(span);} }
+  function parseMaybeNumber(str,type){ const s=String(str||'').trim(); if(!s) return null; const v = type==='pct2' ? (s.endsWith('%')? parseFloat(s)/100 : Number(s.replace(',','.'))) : Number(s.replace(',','.')); return Number.isFinite(v)?v:null; }
+  function setColFilter(key, conf){ state.colFilters[key]=conf; runFilter(); }
 
-  // ==== Глобальный поиск + пагинация ====
+  // ===== UI bindings =====
   function bindUI(){
-    // глобальный фильтр (debounce)
-    let t; $q.addEventListener('input', ()=>{ clearTimeout(t); t=setTimeout(()=>{ state.filterText=$q.value.toLowerCase(); state.page=1; applyFilterAndRender(); }, 120); });
-    $pageSize.addEventListener('change', ()=>{ state.pageSize=Number($pageSize.value); state.page=1; applyFilterAndRender(); });
-    $prev.addEventListener('click', ()=>{ if (state.page>1){ state.page--; applyFilterAndRender(); } });
-    $next.addEventListener('click', ()=>{ const tp=totalPages(); if (state.page<tp){ state.page++; applyFilterAndRender(); } });
+    // глобальный поиск (debounce)
+    let t; $q.addEventListener('input',()=>{ clearTimeout(t); t=setTimeout(()=>{ state.filterText=$q.value.toLowerCase(); state.page=1; runFilter(); },120); });
+    $pageSize.addEventListener('change',()=>{ state.pageSize=Number($pageSize.value); state.page=1; syncURL(); renderVirtualized(true); });
+    $prev.addEventListener('click',()=>{ if(state.page>1){ state.page--; syncURL(); renderVirtualized(true);} });
+    $next.addEventListener('click',()=>{ const tp=totalPages(); if(state.page<tp){ state.page++; syncURL(); renderVirtualized(true);} });
+    $viewport.addEventListener('scroll', onScrollVirtual);
+    window.addEventListener('resize',()=>{ state.rowHeight=null; renderVirtualized(false); });
+    $reset.addEventListener('click',()=>{ resetAll(); });
   }
-  function totalPages(){ if(!state.pageSize) return 1; return Math.max(1, Math.ceil(state.filtered.length/state.pageSize)); }
 
-  // ==== Применение фильтров/сортировки и рендер ====
-  function applyFilterAndRender(){
-    // 1) глобальный фильтр
-    const q = state.filterText;
-    let rows = !q ? state.raw.slice() : state.raw.filter(r=> r.__search.includes(q));
+  function resetAll(){
+    state.filterText=''; $q.value=''; state.colFilters={}; state.sort={key:null,dir:1}; state.page=1; // чекбоксы/inputs очищаются пересборкой фильтров
+    buildFilters(); runFilter();
+  }
 
-    // 2) по-колоночные фильтры
-    rows = rows.filter(r=> passColumnFilters(r));
-
-    // 3) сортировка
-    const {key,dir} = state.sort; if (key){ const t=SCHEMA_MAP.get(key).type; rows.sort((a,b)=> cmp(a[key], b[key], t) * dir); }
-    state.filtered = rows;
-
-    // 4) обновить URL состояние
+  // ===== Worker interaction =====
+  function runFilter(){
+    // обновить URL прямо сейчас (с текущими фильтрами и q), сорт и страница ставятся отдельно
     syncURL();
-
-    // 5) пагинация и рендер
-    render();
-  }
-
-  function passColumnFilters(r){
-    for (const [key,conf] of Object.entries(state.colFilters)){
-      if (!conf) continue;
-      const t = SCHEMA_MAP.get(key).type; const v = r[key];
-      if (conf.kind==='text'){ const s=String(v??'').toLowerCase(); if (!s.includes(conf.value)) return false; }
-      else if (conf.kind==='range'){ const {min,max}=conf; if (min!=null && (v==null||v<min)) return false; if (max!=null && (v==null||v>max)) return false; }
-      else if (conf.kind==='multi'){ const set = conf.set instanceof Set ? conf.set : new Set(conf.set); if (set.size && !set.has(v)) return false; }
+    // нормализуем colFilters для воркера (массив значений вместо Set)
+    const colFilters = {};
+    for(const [k,conf] of Object.entries(state.colFilters)){
+      if(!conf) continue;
+      if(conf.kind==='multi') colFilters[k] = { kind:'multi', set:[...(conf.set instanceof Set ? conf.set : new Set(conf.set))] };
+      else if(conf.kind==='range') colFilters[k] = { kind:'range', min: conf.min, max: conf.max };
+      else if(conf.kind==='text') colFilters[k] = { kind:'text', value: conf.value };
     }
-    return true;
+    worker.postMessage({ type:'filter', q: state.filterText, sortKey: state.sort.key, sortDir: state.sort.dir, colFilters });
   }
 
-  function cmp(a,b,t){ if(a==null&&b==null) return 0; if(a==null) return 1; if(b==null) return -1; return NUMERIC_TYPES.has(t) ? (a-b) : String(a).localeCompare(String(b),'ru',{sensitivity:'base'}); }
+  function updateCounts(){ $counts.textContent = `${state.filteredIdx.length} строк` + (state.filteredIdx.length!==state.raw.length ? ` из ${state.raw.length}` : ''); }
 
-  function render(){
-    // counts
-    $counts.textContent = `${state.filtered.length} строк` + (state.filtered.length!==state.raw.length ? ` из ${state.raw.length}` : '');
+  // ===== Pagination helpers =====
+  function totalPages(){ if(!state.pageSize||state.pageSize===0) return 1; return Math.max(1, Math.ceil(state.filteredIdx.length/state.pageSize)); }
+  function currentPageIdx(){ if(!state.pageSize||state.pageSize===0) return state.filteredIdx; const start=(state.page-1)*state.pageSize; return state.filteredIdx.slice(start, start+state.pageSize); }
 
-    // пагинация
-    const tp = totalPages(); if (state.page>tp) state.page=tp; const start = state.pageSize ? (state.page-1)*state.pageSize : 0; const end = state.pageSize ? Math.min(state.filtered.length, start+state.pageSize) : state.filtered.length; const pageRows = state.pageSize ? state.filtered.slice(start,end) : state.filtered;
-    $pageInfo.textContent = `${state.page}/${tp}`;
+  // ===== Virtualization =====
+  function measureRowHeight(){ if(state.rowHeight) return state.rowHeight; const tr=document.createElement('tr'); const td=document.createElement('td'); td.colSpan=DISPLAY_COLUMNS.length; td.textContent=''; tr.appendChild(td); $tbody.innerHTML=''; $tbody.appendChild(tr); const h=tr.getBoundingClientRect().height||28; state.rowHeight=h; return h; }
+  function onScrollVirtual(){ renderVirtualized(false); }
 
-    // min/max по числовым на текущей странице (динамическая покраска в рамках отображённого)
+  function renderVirtualized(resetScroll){
+    const pageIdx = currentPageIdx();
+    const rowCount = pageIdx.length;
+    const rh = measureRowHeight();
+    if(resetScroll) $viewport.scrollTop = 0;
+    const vpH = $viewport.clientHeight; const scrollTop = $viewport.scrollTop; const overscan = Math.ceil(vpH / rh) * 2;
+    const start = Math.max(0, Math.floor(scrollTop / rh) - overscan);
+    const end = Math.min(rowCount, Math.ceil((scrollTop + vpH) / rh) + overscan);
+
+    // пагинация индикатор
+    const tp = totalPages(); $pageInfo.textContent = `${state.page}/${tp}`;
+
+    // min/max по текущей странице (для стабильной покраски на странице)
     const mm = new Map();
-    for (const key of DISPLAY_COLUMNS){ const col=SCHEMA_MAP.get(key); if(!NUMERIC_TYPES.has(col.type)) continue; let min=Infinity,max=-Infinity; for(const r of pageRows){ const v=r[key]; if(v==null) continue; if(v<min) min=v; if(v>max) max=v; } if(min===Infinity) min=max=null; mm.set(key,{min,max}); }
+    for(const key of DISPLAY_COLUMNS){ const col=SCHEMA_MAP.get(key); if(!NUMERIC_TYPES.has(col.type)) continue; let min=Infinity,max=-Infinity; for(const i of pageIdx){ const v=state.raw[i][key]; if(v==null) continue; if(v<min) min=v; if(v>max) max=v; } if(min===Infinity) min=max=null; mm.set(key,{min,max}); }
+    state.mmPage = mm;
 
-    // таблица
+    // Рендерируем видимый диапазон с верх/низ спейсерами
     const frag = document.createDocumentFragment(); $tbody.innerHTML='';
-    for (const row of pageRows){
+
+    // верхний спейсер
+    if(start>0){ const trS=document.createElement('tr'); const tdS=document.createElement('td'); tdS.colSpan=DISPLAY_COLUMNS.length; tdS.style.height=(start*rh)+"px"; trS.appendChild(tdS); frag.appendChild(trS); }
+
+    for(let i=start;i<end;i++){
+      const row = state.raw[ pageIdx[i] ];
       const tr = document.createElement('tr');
-      for (const key of DISPLAY_COLUMNS){ const col=SCHEMA_MAP.get(key); const td=document.createElement('td'); if(col.type==='bool') td.classList.add('bool'); if(NUMERIC_TYPES.has(col.type)) td.classList.add('num','heat'); const val=row[key]; td.textContent = formatCell(val, col.type); if(NUMERIC_TYPES.has(col.type)) applySolidHeat(td, val, mm.get(key)); tr.appendChild(td); }
+      for(const key of DISPLAY_COLUMNS){
+        const col = SCHEMA_MAP.get(key);
+        const td = document.createElement('td');
+        if(col.type==='bool') td.classList.add('bool');
+        if(NUMERIC_TYPES.has(col.type)) td.classList.add('num','heat');
+        const val = row[key];
+        td.textContent = formatCell(val, col.type);
+        if(NUMERIC_TYPES.has(col.type)) applySolidHeat(td, val, mm.get(key));
+        tr.appendChild(td);
+      }
       frag.appendChild(tr);
     }
-    $tbody.appendChild(frag);
 
-    // маркеры сортировки
-    [...$theadRow.children].forEach(th=>{ const k=th.dataset.key; const span=th.querySelector('.sort'); span.textContent = (state.sort.key===k) ? (state.sort.dir===1?'▲':'▼') : ''; });
+    // нижний спейсер
+    const bottomPad = (rowCount - end) * rh; if(bottomPad>0){ const trE=document.createElement('tr'); const tdE=document.createElement('td'); tdE.colSpan=DISPLAY_COLUMNS.length; tdE.style.height=bottomPad+"px"; trE.appendChild(tdE); frag.appendChild(trE); }
+
+    $tbody.appendChild(frag);
+    markSort();
   }
 
-  function applySolidHeat(td, val, mm){ const {min,max}=mm||{}; if(min==null||max==null||max<=min||val==null){ td.style.backgroundColor='transparent'; return; } const norm=(val-min)/(max-min); const hue = 120*norm; td.style.backgroundColor = `hsla(${hue}, 80%, 30%, 0.42)`; }
-  function formatCell(v,t){ if(v==null||v==='') return '—'; if(t==='int') return String(v); if(t==='float2') return v.toFixed(2); if(t==='pct2') return (v*100).toFixed(2)+'%'; if(t==='bool') return v?'✓':''; return String(v); }
+  function applySolidHeat(td, val, mm){ const {min,max}=mm||{}; if(min==null||max==null||max<=min||val==null){ td.style.backgroundColor='transparent'; return; } const norm = (val - min) / (max - min); const hue = 120 * norm; td.style.backgroundColor = `hsla(${hue}, 80%, 30%, 0.42)`; }
 
-  // ==== Сохранение/восстановление состояния через URL ====
+  // ===== URL state =====
   function syncURL(){
     const p = new URLSearchParams();
-    if (state.filterText) p.set('q', state.filterText);
-    if (state.sort.key) { p.set('sort', state.sort.key); p.set('dir', String(state.sort.dir)); }
-    if (state.pageSize) p.set('ps', String(state.pageSize));
-    if (state.page>1) p.set('p', String(state.page));
-    // per-column filters
-    for (const [key, conf] of Object.entries(state.colFilters)){
-      if (!conf) continue;
-      if (conf.kind==='text') p.set(`cf_${key}`, `t:${encodeURIComponent(conf.value)}`);
-      else if (conf.kind==='range') p.set(`cf_${key}`, `r:${conf.min??''}:${conf.max??''}`);
-      else if (conf.kind==='multi') { const set = conf.set instanceof Set ? [...conf.set] : conf.set; p.set(`cf_${key}`, `m:${set.map(v=>encodeURIComponent(String(v))).join('|')}`); }
+    if(state.filterText) p.set('q', state.filterText);
+    if(state.sort.key){ p.set('sort', state.sort.key); p.set('dir', String(state.sort.dir)); }
+    if(state.pageSize) p.set('ps', String(state.pageSize));
+    if(state.page>1) p.set('p', String(state.page));
+    for(const [key,conf] of Object.entries(state.colFilters)){
+      if(!conf) continue;
+      if(conf.kind==='text') p.set(`cf_${key}`, `t:${encodeURIComponent(conf.value)}`);
+      else if(conf.kind==='range') p.set(`cf_${key}`, `r:${conf.min??''}:${conf.max??''}`);
+      else if(conf.kind==='multi'){ const set = conf.set instanceof Set ? [...conf.set] : conf.set; p.set(`cf_${key}`, `m:${set.map(v=>encodeURIComponent(String(v))).join('|')}`); }
     }
-    const newUrl = `${location.pathname}?${p.toString()}`;
-    history.replaceState(null,'',newUrl);
+    history.replaceState(null,'',`${location.pathname}?${p.toString()}`);
   }
 
   function restoreFromURL(){
     const p = new URLSearchParams(location.search);
     state.filterText = p.get('q') || '';
     $q.value = state.filterText;
-    const sort = p.get('sort'); const dir = parseInt(p.get('dir')||'1',10); if (sort && SCHEMA_MAP.has(sort)) state.sort={key:sort, dir: (dir===-1?-1:1)};
-    const ps = parseInt(p.get('ps')||'5000',10); state.pageSize = Number.isFinite(ps)?ps:5000; document.querySelector('#pageSize').value = String(state.pageSize);
+    const sort = p.get('sort'); const dir = parseInt(p.get('dir')||'1',10); if(sort && SCHEMA_MAP.has(sort)) state.sort={key:sort, dir:(dir===-1?-1:1)};
+    const ps = parseInt(p.get('ps')||'100',10); state.pageSize = Number.isFinite(ps)?ps:100;
     const pg = parseInt(p.get('p')||'1',10); state.page = Number.isFinite(pg)&&pg>0?pg:1;
-    // per-column filters
-    for (const key of DISPLAY_COLUMNS){
-      const raw = p.get(`cf_${key}`); if (!raw) continue;
-      const [kind, a, b] = raw.split(':');
-      if (kind==='t'){ state.colFilters[key] = { kind:'text', value: decodeURIComponent(a||'') } }
-      else if (kind==='r'){ const min = a? Number(decodeURIComponent(a)) : null; const max = b? Number(decodeURIComponent(b)) : null; state.colFilters[key] = { kind:'range', min, max } }
-      else if (kind==='m'){ const list = (a||'').split('|').filter(Boolean).map(x=> decodeURIComponent(x)); state.colFilters[key] = { kind:'multi', set: new Set(list) } }
+    for(const key of DISPLAY_COLUMNS){ const raw=p.get(`cf_${key}`); if(!raw) continue; const [kind,a,b]=raw.split(':'); const t=SCHEMA_MAP.get(key).type; if(kind==='t'){ state.colFilters[key]={kind:'text', value: decodeURIComponent(a||'')}; }
+      else if(kind==='r'){ const min=a? Number(decodeURIComponent(a)) : null; const max=b? Number(decodeURIComponent(b)) : null; state.colFilters[key]={kind:'range', min, max}; }
+      else if(kind==='m'){ const listRaw=(a||'').split('|').filter(Boolean).map(x=> decodeURIComponent(x)); let list; if(t==='bool'){ list=listRaw.map(x=> x==='true'); } else if(t==='int'){ list=listRaw.map(x=> Number(x)).filter(n=>Number.isFinite(n)); } else { list=listRaw; } state.colFilters[key]={kind:'multi', set:new Set(list)}; }
     }
   }
   </script>
