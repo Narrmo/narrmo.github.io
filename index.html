@@ -11,7 +11,7 @@
     }
     *{ box-sizing:border-box }
     html, body { height:100% }
-    body { margin:0; font:12px/1.25 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,"Noto Sans",sans-serif; background:var(--bg); color:var(--text) }
+    body { margin:0; font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,"Noto Sans",sans-serif; background:var(--bg); color:var(--text) }
 
     /* Верхняя панель */
     .toolbar { display:flex; gap:12px; align-items:center; padding:14px 16px; height:var(--toolbar-h) }
@@ -75,9 +75,9 @@
       <select id="pageSize">
         <option value="0">Все</option>
         <option value="100" selected>100</option>
-        <option value="200">200</option>
-        <option value="500">500</option>
-        <option value="1000">1000</option>
+        <option value="2000">2 000</option>
+        <option value="5000">5 000</option>
+        <option value="10000">10 000</option>
       </select>
       <button class="btn" id="prev">◀</button>
       <span class="meta" id="pageInfo">—</span>
@@ -130,7 +130,6 @@
     { key:'Event', label:'Event', type:'bool' },
     { key:'Gift', label:'Gift', type:'bool' },
     { key:'Normal', label:'Normal', type:'bool' },
-    { key:'Own', label:'Own', type:'bool' },
   ];
   const SCHEMA_MAP = new Map(SCHEMA.map(c=>[c.key,c]));
   const DISPLAY_COLUMNS = SCHEMA.map(c=>c.key);
@@ -234,14 +233,13 @@
         restoreFromURL();
         // проставить pageSize в селекте
         $pageSize.value = String(state.pageSize);
+        updateStickyOffsets();
         runFilter();
       } else if(type==='filtered'){
         state.filteredIdx = e.data.idx;
         updateCounts();
-        // если текущая страница ушла за предел — поправить
         const tp = totalPages(); if(state.page>tp) state.page=tp;
-        // перерендер
-        renderVirtualized(true);
+        renderVirtualized(false);
       }
     };
 
@@ -271,8 +269,37 @@
   function onSort(key){ const prev=state.sort.key; state.sort = (prev===key)? {key,dir:state.sort.dir*-1} : {key,dir:1}; markSort(); runFilter(); }
   function markSort(){ [...$theadRow.children].forEach(th=>{ const k=th.dataset.key; const s=th.querySelector('.sort'); s.textContent = (state.sort.key===k)? (state.sort.dir===1?'▲':'▼') : ''; }); }
 
+  // === Sticky header height: вычисляем реальную высоту 1-й строки заголовка и пишем в CSS-переменную
+  function updateStickyOffsets(){
+    const h1 = Math.round(($theadRow.getBoundingClientRect().height)||40);
+    document.documentElement.style.setProperty('--th-h', h1 + 'px');
+  }
+  window.addEventListener('resize', updateStickyOffsets);
+  document.addEventListener('toggle', (e)=>{ if(e.target && e.target.tagName==='DETAILS') updateStickyOffsets(); }, true);); }
+
   // ===== Filters UI =====
-  function buildFilters(){
+  // Hover-режим для выпадающих фильтров (desktop), с fallback на клик на touch-устройствах
+function makeHoverDropdown(wrap){
+  const details = wrap.querySelector('details');
+  const summary = wrap.querySelector('summary');
+  if(!details || !summary) return;
+  const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints>0);
+  if(isTouch){
+    // Для touch оставляем нативный клик по <summary>
+    return;
+  }
+  let hideT;
+  const open = ()=>{ clearTimeout(hideT); details.open = true; updateStickyOffsets(); };
+  const close= ()=>{ clearTimeout(hideT); hideT = setTimeout(()=>{ details.open = false; updateStickyOffsets(); }, 120); };
+  // Отключаем нативный toggle по клику и управляем сами
+  summary.addEventListener('click', (e)=>{ e.preventDefault(); open(); });
+  wrap.addEventListener('mouseenter', open);
+  wrap.addEventListener('mouseleave', close);
+  // Закрытие по Esc
+  wrap.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ details.open=false; updateStickyOffsets(); }});
+}
+
+function buildFilters(){
     $filterRow.innerHTML='';
     for(const key of DISPLAY_COLUMNS){
       const col = SCHEMA_MAP.get(key);
@@ -293,7 +320,10 @@
             const cb=label.querySelector('input'); cb.addEventListener('change',()=> toggleMulti(key, v, chips)); opts.appendChild(label);
           });
         }
-        renderOptions(); search.addEventListener('input',()=> renderOptions(search.value)); th.appendChild(wrap);
+        renderOptions();
+        search.addEventListener('input',()=> renderOptions(search.value));
+        makeHoverDropdown(wrap);
+        th.appendChild(wrap);
       }
       else if(NUMERIC_TYPES.has(col.type)){
         const rng=document.createElement('div'); rng.className='range';
@@ -429,6 +459,8 @@
 
   function restoreFromURL(){
     const p = new URLSearchParams(location.search);
+    // Сбрасываем старый ps из URL, чтобы дефолт 100 применился при первом открытии
+    if (p.has('ps')) { p.delete('ps'); history.replaceState(null,'', location.pathname + (p.toString()? ('?' + p.toString()) : '')); }
     state.filterText = p.get('q') || '';
     $q.value = state.filterText;
     const sort = p.get('sort'); const dir = parseInt(p.get('dir')||'1',10); if(sort && SCHEMA_MAP.has(sort)) state.sort={key:sort, dir:(dir===-1?-1:1)};
