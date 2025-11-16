@@ -280,14 +280,8 @@
   // ===== Filters UI =====
   // Hover-режим для выпадающих фильтров (desktop), с fallback на клик на touch-устройствах
 function makeHoverDropdown(wrap){
-  const details = wrap.querySelector('details');
-  const summary = wrap.querySelector('summary');
-  if(!details || !summary) return;
-  const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints>0);
-  if(isTouch){
-    // Для touch оставляем нативный клик по <summary>
-    return;
-  }
+  // disabled hover logic for stability; we will auto-close on selection instead
+}
   let hideT;
   const open = ()=>{ clearTimeout(hideT); details.open = true; updateStickyOffsets(); };
   const close= ()=>{ clearTimeout(hideT); hideT = setTimeout(()=>{ details.open = false; updateStickyOffsets(); }, 120); };
@@ -317,7 +311,11 @@ function buildFilters(){
             const id=`f_${key}_${String(v).replace(/[^\w]+/g,'_')}`; const label=document.createElement('label');
             const checked = selected.has(v) ? 'checked' : '';
             label.innerHTML=`<input type="checkbox" id="${id}" ${checked}> <span>${txt}</span>`;
-            const cb=label.querySelector('input'); cb.addEventListener('change',()=> toggleMulti(key, v, chips)); opts.appendChild(label);
+            const cb=label.querySelector('input'); cb.addEventListener('change', ()=>{
+              toggleMulti(key, v, chips);
+              const d = wrap.querySelector('details');
+              if (d) setTimeout(()=>{ d.open = false; if (typeof updateStickyOffsets === 'function') updateStickyOffsets(); }, 0);
+            }); opts.appendChild(label);
           });
         }
         renderOptions();
