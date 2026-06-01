@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Q2 Report Slide</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #f1f5f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+        }
+        .slide {
+            width: 960px;
+            height: 540px;
+            background: white;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            padding: 40px;
+            box-sizing: border-box;
+            position: relative;
+        }
+        h1 {
+            font-size: 32px;
+            color: #1e293b;
+            margin-top: 0;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 15px;
+        }
+        .text-block {
+            font-size: 18px;
+            color: #475569;
+            background: #f8fafc;
+            padding: 15px;
+            border-left: 4px solid #3b82f6;
+            margin-bottom: 30px;
+        }
+        .charts-container {
+            display: flex;
+            gap: 40px;
+            height: 300px;
+        }
+        .chart-box {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .chart-title {
+            font-weight: bold;
+            color: #334155;
+            margin-bottom: 10px;
+        }
+        canvas {
+            max-height: 250px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="slide">
+    <h1>Статистика конверсии и ошибок за Q2</h1>
+    
+    <div class="text-block">
+        <b>Вывод:</b> Конверсия в апреле была 12.5%, в мае 12.7%, а в июне стала 10%. При этом количество ошибок выросло до 3640. Пользователи стали реже покупать, графики пересеклись.
+    </div>
+
+    <div class="charts-container">
+        <div class="chart-box">
+            <div class="chart-title">Доли конверсии по месяцам (%)</div>
+            <canvas id="pieChart"></canvas>
+        </div>
+
+        <div class="chart-box" style="flex: 1.5;">
+            <div class="chart-title">Динамика Конверсии vs Ошибки</div>
+            <canvas id="dualChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. Рисуем Pie Chart (Математическое преступление: сумма процентов)
+    const ctxPie = document.getElementById('pieChart').getContext('2d');
+    new Chart(ctxPie, {
+        type: 'pie',
+        data: {
+            labels: ['Апрель', 'Май', 'Июнь'],
+            datasets: [{
+                data: [35, 36, 29], // Пропорции конверсий
+                backgroundColor: ['#3b82f6', '#10b981', '#f43f5e']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    // 2. Рисуем Dual Axis Chart (Пересечение несовместимых осей)
+    const ctxDual = document.getElementById('dualChart').getContext('2d');
+    new Chart(ctxDual, {
+        type: 'line',
+        data: {
+            labels: ['Апрель', 'Май', 'Июнь'],
+            datasets: [
+                {
+                    label: 'Ср. Конверсия (%)',
+                    data: [12.5, 12.75, 10.0],
+                    borderColor: '#3b82f6',
+                    yAxisID: 'y',
+                    tension: 0.1,
+                    borderWidth: 3
+                },
+                {
+                    label: 'Ошибки (шт)',
+                    data: [270, 310, 3640],
+                    borderColor: '#f43f5e',
+                    yAxisID: 'y1',
+                    tension: 0.1,
+                    borderWidth: 3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: { display: true, text: 'Конверсия (%)' },
+                    min: 8, // Искусственно завышенный масштаб
+                    max: 14
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: { display: true, text: 'Ошибки' },
+                    grid: { drawOnChartArea: false }
+                }
+            }
+        }
+    });
+</script>
+
+</body>
+</html>
