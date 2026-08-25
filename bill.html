@@ -1,0 +1,181 @@
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Экран редактирования сметы: Блочная структура (Обновлено со всеми специалистами) -->
+<div class="min-h-screen bg-gray-100 p-6 font-sans text-gray-800">
+  
+  <!-- Шапка сметы -->
+  <div class="flex justify-between items-end mb-6 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+    <div>
+      <div class="flex items-center gap-2 mb-2">
+        <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-semibold uppercase tracking-wide">X5</span>
+        <span class="text-sm text-gray-500">21.08.2026</span>
+      </div>
+      <h1 class="text-2xl font-bold">Проект: Укажите название проекта</h1>
+      <p class="text-sm text-gray-500 mt-1">Клиент: Укажите название компании</p>
+    </div>
+    <div class="flex items-center gap-4">
+      <div class="text-right mr-4">
+        <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Итого с НДС</p>
+        <p class="text-2xl font-bold text-gray-900">376 577 ₽</p>
+      </div>
+      <div class="text-right border-l border-gray-200 pl-6 mr-2">
+        <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Маржа проекта</p>
+        <p class="text-2xl font-bold text-green-600">55%</p>
+      </div>
+      <button class="bg-blue-600 text-white px-5 py-2.5 rounded-lg shadow-sm hover:bg-blue-700 transition font-medium">Экспорт внешней сметы</button>
+    </div>
+  </div>
+
+  <!-- БЛОК 1: Стратегические работы -->
+  <div class="mb-8">
+    <!-- Заголовок блока -->
+    <div class="flex justify-between items-center bg-gray-800 text-white p-4 rounded-t-xl">
+      <h2 class="text-lg font-bold">1. Стратегические работы</h2>
+      <div class="text-sm font-medium">Итого по блоку: <span class="text-blue-300 ml-2">270 640 ₽</span></div>
+    </div>
+
+    <div class="bg-white border-x border-b border-gray-200 rounded-b-xl p-5 space-y-6 shadow-sm">
+      
+      <!-- Работа 1: Письмо "Дайджест" -->
+      <div class="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+        <!-- Шапка работы -->
+        <div class="bg-gray-50 p-5 border-b border-gray-200 flex justify-between items-start gap-6">
+          <div class="flex-1 space-y-4">
+            <!-- Название работы -->
+            <input type="text" value="Письмо &quot;Дайджест&quot;" class="text-xl font-bold bg-transparent border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 outline-none w-full transition pb-1 text-gray-900">
+            
+            <!-- Описание и Результат (Грид) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Описание работы -->
+              <div>
+                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 flex items-center">
+                  <svg class="w-3.5 h-3.5 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
+                  Описание работы
+                </label>
+                <textarea class="w-full text-sm text-gray-700 bg-white border border-gray-300 focus:border-blue-500 rounded-md px-3 py-2 resize-none h-20 outline-none shadow-sm transition placeholder-gray-400" placeholder="Что конкретно будем делать...">Копирайтинг контентного или новостного письма, сборка макета с большим количеством блоков в шаблоне. Заложена одна итерация правок.</textarea>
+              </div>
+              
+              <!-- Результат работы -->
+              <div>
+                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 flex items-center">
+                  <svg class="w-3.5 h-3.5 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  Результат работы
+                </label>
+                <textarea class="w-full text-sm text-gray-700 bg-white border border-gray-300 focus:border-blue-500 rounded-md px-3 py-2 resize-none h-20 outline-none shadow-sm transition placeholder-gray-400" placeholder="Что получит клиент...">Готовый HTML-макет письма, загруженный в платформу рассылок, с выкупленными изображениями со стока.</textarea>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Финансовый блок -->
+          <div class="text-right bg-white p-4 rounded-lg border border-gray-200 shadow-sm w-52 shrink-0">
+            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Стоимость клиенту</p>
+            <p class="text-xl font-bold text-gray-900 mt-1">41 240 ₽</p>
+            <div class="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
+              <span class="text-xs text-gray-500">Маржа</span>
+              <span class="text-sm text-green-600 font-bold">68%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Таблица специалистов (Внутри работы) -->
+        <div>
+          <!-- Заголовки таблицы -->
+          <div class="grid grid-cols-12 bg-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+            <div class="col-span-3 p-2 pl-4">Специалист / Расход</div>
+            <div class="col-span-4 p-2 text-center border-l border-red-100 bg-red-50 text-red-700">Внутренняя оценка (Косты)</div>
+            <div class="col-span-5 p-2 text-center border-l border-blue-100 bg-blue-50 text-blue-700">Внешняя оценка (Клиенту)</div>
+          </div>
+          <div class="grid grid-cols-12 bg-white text-xs font-medium text-gray-400 border-b border-gray-200">
+            <div class="col-span-3 p-2 pl-4">Роль</div>
+            <div class="col-span-1 p-2 text-right bg-red-50">Часы</div>
+            <div class="col-span-1 p-2 text-right bg-red-50">Ставка</div>
+            <div class="col-span-2 p-2 text-right bg-red-50">Себестоимость</div>
+            <div class="col-span-1 p-2 text-right bg-blue-50 border-l border-gray-200">Часы</div>
+            <div class="col-span-2 p-2 text-right bg-blue-50">Ставка</div>
+            <div class="col-span-2 p-2 text-right bg-blue-50">Сумма</div>
+          </div>
+
+          <!-- Account Group Head -->
+          <div class="grid grid-cols-12 text-sm border-b border-gray-100 hover:bg-gray-50">
+            <div class="col-span-3 p-2 pl-4 font-medium text-gray-700">Account Group Head</div>
+            <div class="col-span-1 p-2 text-right bg-red-50/30 text-gray-600">2</div>
+            <div class="col-span-1 p-2 text-right bg-red-50/30 text-gray-400">1 576</div>
+            <div class="col-span-2 p-2 text-right bg-red-50/30 text-red-600 font-medium">3 152 ₽</div>
+            <div class="col-span-1 p-2 text-right bg-blue-50/30 border-l border-gray-200 text-gray-800 font-medium">4</div>
+            <div class="col-span-2 p-2 text-right bg-blue-50/30 text-gray-500">3 547</div>
+            <div class="col-span-2 p-2 text-right bg-blue-50/30 text-gray-900 font-medium">14 188 ₽</div>
+          </div>
+          
+          <!-- Senior Designer -->
+          <div class="grid grid-cols-12 text-sm border-b border-gray-100 hover:bg-gray-50">
+            <div class="col-span-3 p-2 pl-4 font-medium text-gray-700">Senior Designer</div>
+            <div class="col-span-1 p-2 text-right bg-red-50/30 text-gray-600">4</div>
+            <div class="col-span-1 p-2 text-right bg-red-50/30 text-gray-400">1 000</div>
+            <div class="col-span-2 p-2 text-right bg-red-50/30 text-red-600 font-medium">4 000 ₽</div>
+            <div class="col-span-1 p-2 text-right bg-blue-50/30 border-l border-gray-200 text-gray-800 font-medium">6</div>
+            <div class="col-span-2 p-2 text-right bg-blue-50/30 text-gray-500">2 578</div>
+            <div class="col-span-2 p-2 text-right bg-blue-50/30 text-gray-900 font-medium">15 468 ₽</div>
+          </div>
+
+          <!-- HTML Coder -->
+          <div class="grid grid-cols-12 text-sm border-b border-gray-100 hover:bg-gray-50">
+            <div class="col-span-3 p-2 pl-4 font-medium text-gray-700">HTML Coder</div>
+            <div class="col-span-1 p-2 text-right bg-red-50/30 text-gray-600">3</div>
+            <div class="col-span-1 p-2 text-right bg-red-50/30 text-gray-400">892</div>
+            <div class="col-span-2 p-2 text-right bg-red-50/30 text-red-600 font-medium">2 676 ₽</div>
+            <div class="col-span-1 p-2 text-right bg-blue-50/30 border-l border-gray-200 text-gray-800 font-medium">4</div>
+            <div class="col-span-2 p-2 text-right bg-blue-50/30 text-gray-500">1 934</div>
+            <div class="col-span-2 p-2 text-right bg-blue-50/30 text-gray-900 font-medium">7 736 ₽</div>
+          </div>
+
+          <!-- Фрилансер -->
+          <div class="grid grid-cols-12 text-sm hover:bg-gray-50">
+            <div class="col-span-3 p-2 pl-4 font-medium text-gray-700 flex items-center">
+              <span class="bg-gray-200 text-gray-600 text-[10px] px-1.5 py-0.5 rounded mr-2 uppercase">Подряд</span> Копирайтер
+            </div>
+            <div class="col-span-1 p-2 text-right bg-red-50/30 text-gray-400">--</div>
+            <div class="col-span-1 p-2 text-right bg-red-50/30 text-gray-400">--</div>
+            <div class="col-span-2 p-2 text-right bg-red-50/30 text-red-600 font-medium">2 000 ₽</div>
+            <div class="col-span-1 p-2 text-right bg-blue-50/30 border-l border-gray-200 text-gray-800 font-medium">1</div>
+            <div class="col-span-2 p-2 text-right bg-blue-50/30 text-gray-500">11 335</div>
+            <div class="col-span-2 p-2 text-right bg-blue-50/30 text-gray-900 font-medium">11 335 ₽</div>
+          </div>
+        </div>
+        
+        <!-- Панель добавления спеца -->
+        <div class="bg-gray-50 p-2 pl-4 border-t border-gray-200">
+          <button class="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            Добавить специалиста
+          </button>
+        </div>
+      </div>
+
+      <!-- Работа 2: CRM-аудит (СВЕРНУТЫЙ ВИД) -->
+      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm flex items-center justify-between p-4 hover:border-gray-300 cursor-pointer">
+        <div class="flex items-start gap-4 flex-1">
+          <svg class="w-5 h-5 text-gray-400 transform -rotate-90 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          <div class="flex-1 pr-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-1">CRM-аудит Вариант №1. Начальный</h3>
+            <div class="space-y-0.5">
+              <p class="text-sm text-gray-500 line-clamp-1"><span class="font-medium text-gray-600">Описание:</span> Изучение текущей CRM-стратегии, анализ форм сбора контактов...</p>
+              <p class="text-sm text-gray-500 line-clamp-1"><span class="font-medium text-gray-600">Результат:</span> Документ с подробным описанием узких мест воронки и стратегии...</p>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-6 shrink-0">
+          <div class="text-right hidden md:block">
+            <p class="text-xs text-gray-500">Косты</p>
+            <p class="text-sm font-medium text-red-600">112 077 ₽</p>
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-gray-500">Клиенту</p>
+            <p class="text-lg font-bold text-gray-900">229 400 ₽</p>
+          </div>
+          <div class="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-bold">51%</div>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+</div>
